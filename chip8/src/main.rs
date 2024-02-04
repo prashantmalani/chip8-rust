@@ -1,5 +1,8 @@
 use std::{env, process::exit};
 
+mod mem;
+use mem::mem::Memory;
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     
@@ -17,5 +20,11 @@ fn main() {
         },
     };
 
-    println!("Read in program of size: {} bytes", program.len());    
+    println!("Read in program of size: {} bytes", program.len()); 
+
+    let mut mem = Memory{mem: [0; 4096]}; 
+    match mem.load_program(&program) {
+        Err(e) => println!("Load failed: {}", e),
+        _ => {},
+    }
 }
