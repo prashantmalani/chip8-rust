@@ -3,6 +3,9 @@ use std::{env, process::exit};
 mod mem;
 use mem::mem::Memory;
 
+mod cpu;
+use cpu::cpu::Cpu;
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     
@@ -26,5 +29,17 @@ fn main() {
     match mem.load_program(&program) {
         Err(e) => println!("Load failed: {}", e),
         _ => {},
+    }
+
+    let mut cpu = Cpu::new();
+    // main loop
+    loop {
+        let instr = match cpu.fetch(&mem) {
+            Ok(instr) => instr,
+            Err(e) => {
+                println!("Fetch failed: {}", e);
+                break;
+            },
+        };
     }
 }
