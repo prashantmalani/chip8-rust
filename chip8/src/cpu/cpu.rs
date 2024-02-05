@@ -23,8 +23,7 @@ impl Cpu {
     }
 
     // Get the next instruction from the PC.
-    // The instructions seem to be stored in memory in Litte-Endian format,
-    // i.e the first byte is the LSB.
+    // Big Endian format.
     pub fn fetch(&mut self, mem: &Memory) -> Result<u16, String> {
         let byte1 = match mem.read(self.pc.into()) {
             Ok(byte) => byte,
@@ -36,7 +35,7 @@ impl Cpu {
             Err(e) => return Err(String::from("Fetch failed") + &e),
         };
 
-        let instruction = ((byte2 as u16) << 8) | byte1 as u16;
+        let instruction = ((byte1 as u16) << 8) | byte2 as u16;
 
         // Increment the PC by 1 instruction immediately.
         self.pc = self.pc + 2;
@@ -56,13 +55,13 @@ mod tests {
         let mut cpu = Cpu::new();
         let mut mem_array: [u8; 4096] = [0; 4096];
 
-        let instr1: u16 = 0xDEEF;
-        let instr2: u16 = 0x1234;
+        let instr1: u16 = 0x00E0;
+        let instr2: u16 = 0x70AB;
 
-        mem_array[PROGRAM_ADDRESS as usize] = (instr1 & 0xFF) as u8;
-        mem_array[(PROGRAM_ADDRESS + 1) as usize] = ((instr1 >> 8) & 0xFF) as u8;
-        mem_array[(PROGRAM_ADDRESS + 2) as usize] = (instr2 & 0xFF) as u8;
-        mem_array[(PROGRAM_ADDRESS + 3) as usize] = ((instr2 >> 8) & 0xFF) as u8;
+        mem_array[PROGRAM_ADDRESS as usize] = ((instr1 >> 8) & 0xFF) as u8;
+        mem_array[(PROGRAM_ADDRESS + 1) as usize] = (instr1 & 0xFF) as u8;
+        mem_array[(PROGRAM_ADDRESS + 2) as usize] = ((instr2 >> 8) & 0xFF) as u8;
+        mem_array[(PROGRAM_ADDRESS + 3) as usize] = (instr2 & 0xFF) as u8;
 
         let mem = Memory {
             mem: mem_array,
