@@ -41,5 +41,15 @@ fn main() {
                 break;
             },
         };
+
+        let decode = match cpu.decode(instr) {
+            Err(e) => {
+                println!("Decode failed: {}", e);
+                break;
+            },
+            _ => {},
+        };
     }
+
+    exit(1);
 }

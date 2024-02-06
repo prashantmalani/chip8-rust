@@ -42,6 +42,16 @@ impl Cpu {
 
         return Ok(instruction);
     }
+
+    pub fn decode(&self, instr: u16) -> Result<i32, String>{
+        match instr {
+            0x00e0 => println!("Received clear screen."),
+            unknown_instr => {
+                return Err(String::from("Unknown instruction: ") + &unknown_instr.to_string());
+            }
+        }
+        return Ok(0);
+    }
 }
 
 
@@ -81,5 +91,12 @@ mod tests {
     
         cpu.pc = 4096 + 10;
         assert!(cpu.fetch(&mem).is_err());
+    }
+
+    #[test]
+    fn check_decode() {
+        let cpu = Cpu::new();
+        assert!(cpu.decode(0x00e0).is_ok());
+        assert!(cpu.decode(0x9000).is_err());
     }
 }
