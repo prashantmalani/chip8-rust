@@ -1,6 +1,6 @@
 use std::collections::LinkedList;
 
-use crate::mem::mem::Memory;
+use crate::{mem::mem::Memory, display::display::Display};
 
 pub struct Cpu {
     pc: u16, // program counter
@@ -43,9 +43,9 @@ impl Cpu {
         return Ok(instruction);
     }
 
-    pub fn decode(&self, instr: u16) -> Result<i32, String>{
+    pub fn decode(&self, instr: u16, disp: &mut Display) -> Result<i32, String>{
         match instr {
-            0x00e0 => println!("Received clear screen."),
+            0x00e0 => disp.clear(),
             unknown_instr => {
                 return Err(String::from("Unknown instruction: ") + &unknown_instr.to_string());
             }
@@ -57,6 +57,8 @@ impl Cpu {
 
 #[cfg(test)]
 mod tests {
+    use crate::display::display::Display;
+
     use super::{Memory, Cpu, PROGRAM_ADDRESS};
 
     #[test]
@@ -96,7 +98,8 @@ mod tests {
     #[test]
     fn check_decode() {
         let cpu = Cpu::new();
-        assert!(cpu.decode(0x00e0).is_ok());
-        assert!(cpu.decode(0x9000).is_err());
+        let mut disp = Display::new();
+        assert!(cpu.decode(0x00e0, &mut disp).is_ok());
+        assert!(cpu.decode(0x9000, &mut disp).is_err());
     }
 }

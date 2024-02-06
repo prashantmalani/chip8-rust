@@ -6,6 +6,9 @@ use mem::mem::Memory;
 mod cpu;
 use cpu::cpu::Cpu;
 
+mod display;
+use display::display::Display;
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     
@@ -31,6 +34,8 @@ fn main() {
         _ => {},
     }
 
+    let mut disp = Display::new();
+
     let mut cpu = Cpu::new();
     // main loop
     loop {
@@ -42,7 +47,7 @@ fn main() {
             },
         };
 
-        let decode = match cpu.decode(instr) {
+        let decode = match cpu.decode(instr, &mut disp) {
             Err(e) => {
                 println!("Decode failed: {}", e);
                 break;
