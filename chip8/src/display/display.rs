@@ -1,16 +1,29 @@
+use minifb::{Window, WindowOptions, Scale};
+
 const WIDTH: usize = 64;
 const HEIGHT: usize = 32;
 
 // We implement the display using a linear vector of 32 bit values.
 pub struct Display {
     buf: [u32; WIDTH * HEIGHT],
+    window: Option<Window>,
 }
 
 impl Display {
 
     pub fn new() -> Self {
+        let mut woptions  = WindowOptions::default();
+        woptions.scale = Scale::X8;
         Display {
             buf: [1; WIDTH * HEIGHT],
+            window: Some(Window::new(
+                "Test",
+                WIDTH,
+                HEIGHT,
+                woptions,
+            ).unwrap_or_else(|e| {
+                panic!("{}", e);
+            })),
         }
     }
 
@@ -30,14 +43,10 @@ impl Display {
     // it is easier to write unit tests for the logic.
     //
     // TODO: print to an actual framebuffer.
-    fn update_display(&self) {
-        for i in 0..self.buf.len() {
-            if i % WIDTH == 0 {
-                println!();
-            }
-            std::print!("{}", self.buf[i])
+    fn update_display(&mut self) {
+        if let Some(window) = &mut self.window {
+            window.update_with_buffer(&self.buf, WIDTH, HEIGHT);
         }
-        println!();
     }
 }
 
@@ -47,7 +56,7 @@ mod tests {
 
     #[test]
     fn check_clear_buf() {
-        let mut disp = Display{buf: [1; WIDTH * HEIGHT]};
+        let mut disp = Display{buf: [1; WIDTH * HEIGHT], window: None};
         disp.clear_buf();
         for pxl in disp.buf.iter() {
             assert_eq!(*pxl, 0);
