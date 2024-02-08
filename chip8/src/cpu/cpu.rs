@@ -43,12 +43,24 @@ impl Cpu {
         return Ok(instruction);
     }
 
-    pub fn decode(&self, instr: u16, disp: &mut Display) -> Result<i32, String>{
+    // Handler for the "Set I" instruction.
+    fn set_i(&mut self, instr: u16) {
+        self.i = instr & 0xFFF;
+    }
+
+    pub fn decode(&mut self, instr: u16, disp: &mut Display) -> Result<i32, String>{
         match instr {
             0x00e0 => disp.clear(),
-            unknown_instr => {
-                return Err(String::from("Unknown instruction: ") + &unknown_instr.to_string());
+            instr2 => {
+                match (instr2 >> 12) & 0xF {
+                    0xA => self.set_i(instr2),
+                    _ => {
+                        return Err(String::from("Unknown instruction: ") + &instr2.to_string());
+                    }
+                }
             }
+
+
         }
         return Ok(0);
     }
@@ -85,7 +97,7 @@ mod tests {
     }
 
     #[test]
-    fn check_invalid_addr() {
+    fn fetch_invalid_addr() {
         let mut cpu = Cpu::new();
         let mem = Memory {
             mem: [0; 4096],
@@ -96,10 +108,25 @@ mod tests {
     }
 
     #[test]
-    fn check_decode() {
-        let cpu = Cpu::new();
+    fn decode_invalid() {
+        let mut cpu = Cpu::new();
         let mut disp = Display::new();
-        assert!(cpu.decode(0x00e0, &mut disp).is_ok());
         assert!(cpu.decode(0x9000, &mut disp).is_err());
     }
+
+    #[test]
+    fn decode_disp_clear() {
+        let mut cpu = Cpu::new();
+        let mut disp = Display::new();
+        assert!(cpu.decode(0x00e0, &mut disp).is_ok());
+    }
+
+    #[test]
+    fn decode_set_i() {
+        let mut cpu = Cpu::new();
+        let mut disp = Display::new();
+        assert!(cpu.decode(0xa22a, &mut disp).is_ok());
+        assert_eq!(cpu.i, 0x22a);
+    }
+
 }
