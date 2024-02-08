@@ -48,12 +48,20 @@ impl Cpu {
         self.i = instr & 0xFFF;
     }
 
+    fn set_v(&mut self, instr: u16) {
+        let ind = (instr >> 8) & 0xF;
+        let val = (instr & 0xFF) as u8;
+
+        self.v[ind as usize] = val;
+    }
+
     pub fn decode(&mut self, instr: u16, disp: &mut Display) -> Result<i32, String>{
         match instr {
             0x00e0 => disp.clear(),
             instr2 => {
                 match (instr2 >> 12) & 0xF {
                     0xA => self.set_i(instr2),
+                    0x6 => self.set_v(instr2),
                     _ => {
                         return Err(String::from("Unknown instruction: ") + &instr2.to_string());
                     }
@@ -127,6 +135,16 @@ mod tests {
         let mut disp = Display::new();
         assert!(cpu.decode(0xa22a, &mut disp).is_ok());
         assert_eq!(cpu.i, 0x22a);
+    }
+
+    #[test]
+    fn decode_set_v() {
+        let mut cpu = Cpu::new();
+        let mut disp = Display::new();
+        assert!(cpu.decode(0x600c, &mut disp).is_ok());
+        assert_eq!(cpu.v[0], 0xc);
+        assert!(cpu.decode(0x6FFE, &mut disp).is_ok());
+        assert_eq!(cpu.v[0xF], 0xFE);  
     }
 
 }
