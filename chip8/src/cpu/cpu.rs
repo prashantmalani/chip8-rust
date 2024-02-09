@@ -1,6 +1,6 @@
 use std::collections::LinkedList;
 
-use crate::{mem::mem::Memory, display::display::Display};
+use crate::{mem::mem::Memory, display::display::{Display, WIDTH, HEIGHT}};
 
 pub struct Cpu {
     pc: u16, // program counter
@@ -55,13 +55,45 @@ impl Cpu {
         self.v[ind as usize] = val;
     }
 
-    pub fn decode(&mut self, instr: u16, disp: &mut Display) -> Result<i32, String>{
+    /*
+       Decodes the draw instruction: DXYN
+
+       In order to make the code more testable, we split it into two parts:
+       1. Gets all the sprite data from the index, along with X,Y coordinates.
+       2. Draw command which basically calls the displays draw command
+
+       This way, we can unit test the CPU section of the logic (part 1) while
+       the display module can effectively unit test the display logic (part 2)
+       of the code.
+    */
+    fn get_sprite(&self, instr: u16, mem: &Memory) -> (u8, u8, Vec<u8>) {
+        let x_reg_ind = ((instr >> 8) & 0xF) as usize;
+        let y_reg_ind = ((instr >> 4) & 0xF) as usize;
+
+        let x = self.v[x_reg_ind] % (WIDTH as u8);
+        let y = self.v[y_reg_ind] % (HEIGHT as u8);
+        let n = instr & 0xF;
+
+        let mut sprite: Vec<u8> = Vec::new();
+        for ind in 0..n {
+            sprite.push(mem.mem[self.i as usize + ind as usize])
+        }
+
+        return (x, y, sprite);
+    }
+
+    fn handle_draw(&self, instr: u16, mem: Option<&Memory>) {
+        let (x, y, sprite) =self.get_sprite(instr, &mem.unwrap());
+    }
+
+    pub fn decode(&mut self, instr: u16, disp: &mut Display, mem: Option<&Memory>) -> Result<i32, String>{
         match instr {
             0x00e0 => disp.clear(),
             instr2 => {
                 match (instr2 >> 12) & 0xF {
                     0xA => self.set_i(instr2),
                     0x6 => self.set_v(instr2),
+                    0xD => self.handle_draw(instr2, mem),
                     _ => {
                         return Err(String::from("Unknown instruction: ") + &instr2.to_string());
                     }
@@ -119,21 +151,21 @@ mod tests {
     fn decode_invalid() {
         let mut cpu = Cpu::new();
         let mut disp = Display::new();
-        assert!(cpu.decode(0x9000, &mut disp).is_err());
+        assert!(cpu.decode(0x9000, &mut disp, None).is_err());
     }
 
     #[test]
     fn decode_disp_clear() {
         let mut cpu = Cpu::new();
         let mut disp = Display::new();
-        assert!(cpu.decode(0x00e0, &mut disp).is_ok());
+        assert!(cpu.decode(0x00e0, &mut disp, None).is_ok());
     }
 
     #[test]
     fn decode_set_i() {
         let mut cpu = Cpu::new();
         let mut disp = Display::new();
-        assert!(cpu.decode(0xa22a, &mut disp).is_ok());
+        assert!(cpu.decode(0xa22a, &mut disp, None).is_ok());
         assert_eq!(cpu.i, 0x22a);
     }
 
@@ -141,10 +173,43 @@ mod tests {
     fn decode_set_v() {
         let mut cpu = Cpu::new();
         let mut disp = Display::new();
-        assert!(cpu.decode(0x600c, &mut disp).is_ok());
+        assert!(cpu.decode(0x600c, &mut disp, None).is_ok());
         assert_eq!(cpu.v[0], 0xc);
-        assert!(cpu.decode(0x6FFE, &mut disp).is_ok());
+        assert!(cpu.decode(0x6FFE, &mut disp, None).is_ok());
         assert_eq!(cpu.v[0xF], 0xFE);  
+    }
+
+    #[test]
+    fn get_sprite() {
+        let mut cpu = Cpu::new();
+        // TODO: Find a way to use MEM_SIZE constant.
+        let mut mem_buf = [0; 4096];
+
+        // Fill up a buffer with a sprite:
+        const I: u16 = 0x400;
+        const N: u8 = 5;
+        let expected_sprite: [u8; N as usize] = [0x34, 0x88, 0x88, 0x23, 0x01];
+        for i in 0..N {
+            mem_buf[I as usize + i as usize] = expected_sprite[i as usize];
+        }
+
+        let memory = Memory { mem: mem_buf };
+
+        // Set up CPU registers
+        let x = 34;
+        let y = 12;
+        let x_reg = 4;
+        let y_reg = 8;
+        cpu.v[x_reg] = x;
+        cpu.v[y_reg] = y;
+        cpu.i = I;
+
+        let instr: u16 = (N as u16) | (y_reg << 4) as u16 | (x_reg << 8) as u16 | (0xD << 12) as u16;
+        let (ret_x,ret_y, vec) = cpu.get_sprite(instr, &memory);
+        assert_eq!(ret_x, x);
+        assert_eq!(ret_y, y);
+        assert_eq!(&vec[..], &expected_sprite[..]);
+
     }
 
 }
