@@ -1,7 +1,7 @@
 use minifb::{Window, WindowOptions, Scale};
 
-const WIDTH: usize = 64;
-const HEIGHT: usize = 32;
+pub const WIDTH: usize = 64;
+pub const HEIGHT: usize = 32;
 
 // We implement the display using a linear vector of 32 bit values.
 pub struct Display {
