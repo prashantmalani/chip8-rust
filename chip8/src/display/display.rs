@@ -10,6 +10,8 @@ pub struct Display {
 }
 
 impl Display {
+    const ON_PIXEL: u32 = 0xFFFFFF;
+    const OFF_PIXEL: u32 = 0x0;
 
     pub fn new() -> Self {
         let mut woptions  = WindowOptions::default();
@@ -37,6 +39,49 @@ impl Display {
             *pxl = 0;
         }
     }
+
+    pub fn draw(&mut self, x: u8, y: u8, sprite: &Vec<u8>) -> u8 {
+        let vf = self.update_buf_sprite(x, y, sprite);
+        self.update_display();
+
+        return vf;
+    }
+
+    // Performs the draw of the sprite, and returns
+    // what the eventual value of F register should be.
+    fn update_buf_sprite(&mut self, x: u8, y:u8, sprite: &Vec<u8>) -> u8 {
+        let mut vf: u8 = 0;
+        for (i, cur_byte) in sprite.iter().enumerate() {
+            // Stop if you've reach the vertical edge.
+            let cur_y = y + (i as u8);
+            if cur_y == (HEIGHT as u8) {
+                break;
+            }
+
+            for x_ind in {0..8} {
+                let cur_x = x + x_ind;
+                // Stop if we've reached the edge.
+                if cur_x == (WIDTH as u8) {
+                    break;
+                }
+
+                let bit = (cur_byte >> (7 - x_ind)) & 1;
+                if bit == 0 {
+                    continue;
+                }
+
+                let buf_ind: usize = (WIDTH * cur_y as usize) + cur_x as usize;
+                if self.buf[buf_ind] == Display::ON_PIXEL {
+                    self.buf[buf_ind] =  Display::OFF_PIXEL;
+                    vf = 1;
+                } else {
+                    self.buf[buf_ind] = Display::ON_PIXEL;
+                }
+            }
+        }
+
+        return vf;
+     }
 
     // Right now, just print everything to the console.
     // We keep the actual printing separate from the update logic so that

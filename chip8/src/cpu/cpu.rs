@@ -82,18 +82,19 @@ impl Cpu {
         return (x, y, sprite);
     }
 
-    fn handle_draw(&self, instr: u16, mem: Option<&Memory>) {
+    fn handle_draw(&mut self, instr: u16, mem: Option<&Memory>, disp: &mut Display) {
         let (x, y, sprite) =self.get_sprite(instr, &mem.unwrap());
+        self.v[0xf] = disp.draw(x, y, &sprite);
     }
 
     pub fn decode(&mut self, instr: u16, disp: &mut Display, mem: Option<&Memory>) -> Result<i32, String>{
-        match instr {
+            match instr {
             0x00e0 => disp.clear(),
             instr2 => {
                 match (instr2 >> 12) & 0xF {
                     0xA => self.set_i(instr2),
                     0x6 => self.set_v(instr2),
-                    0xD => self.handle_draw(instr2, mem),
+                    0xD => self.handle_draw(instr2, mem, disp),
                     _ => {
                         return Err(String::from("Unknown instruction: ") + &instr2.to_string());
                     }
