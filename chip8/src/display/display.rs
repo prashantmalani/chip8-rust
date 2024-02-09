@@ -45,7 +45,8 @@ impl Display {
     // TODO: print to an actual framebuffer.
     fn update_display(&mut self) {
         if let Some(window) = &mut self.window {
-            window.update_with_buffer(&self.buf, WIDTH, HEIGHT);
+            window.update_with_buffer(&self.buf, WIDTH, HEIGHT)
+                .expect("Window update failed");
         }
     }
 }
