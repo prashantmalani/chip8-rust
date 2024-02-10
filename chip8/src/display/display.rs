@@ -3,6 +3,9 @@ use minifb::{Window, WindowOptions, Scale};
 pub const WIDTH: usize = 64;
 pub const HEIGHT: usize = 32;
 
+const ON_PIXEL: u32 = 0xFFFFFF;
+const OFF_PIXEL: u32 = 0x0;
+
 // We implement the display using a linear vector of 32 bit values.
 pub struct Display {
     buf: [u32; WIDTH * HEIGHT],
@@ -10,9 +13,6 @@ pub struct Display {
 }
 
 impl Display {
-    const ON_PIXEL: u32 = 0xFFFFFF;
-    const OFF_PIXEL: u32 = 0x0;
-
     pub fn new() -> Self {
         let mut woptions  = WindowOptions::default();
         woptions.scale = Scale::X8;
@@ -71,11 +71,11 @@ impl Display {
                 }
 
                 let buf_ind: usize = (WIDTH * cur_y as usize) + cur_x as usize;
-                if self.buf[buf_ind] == Display::ON_PIXEL {
-                    self.buf[buf_ind] =  Display::OFF_PIXEL;
+                if self.buf[buf_ind] == ON_PIXEL {
+                    self.buf[buf_ind] = OFF_PIXEL;
                     vf = 1;
                 } else {
-                    self.buf[buf_ind] = Display::ON_PIXEL;
+                    self.buf[buf_ind] = ON_PIXEL;
                 }
             }
         }
@@ -98,7 +98,7 @@ impl Display {
 
 #[cfg(test)]
 mod tests {
-    use super::{Display, WIDTH, HEIGHT};
+    use super::{Display, WIDTH, HEIGHT, ON_PIXEL, OFF_PIXEL};
 
     #[test]
     fn check_clear_buf() {
@@ -106,6 +106,34 @@ mod tests {
         disp.clear_buf();
         for pxl in disp.buf.iter() {
             assert_eq!(*pxl, 0);
+        }
+    }
+
+    #[test]
+    fn update_buf_sprite_normal() {
+        let mut disp = Display{buf: [OFF_PIXEL; WIDTH * HEIGHT], window: None};
+        // Use a sprite for the letter "F"
+        let sprite = vec![0xF0, 0x80, 0xF0, 0x80, 0x80];
+
+        let x = 32;
+        let y = 16;
+        let vf = disp.update_buf_sprite(x, y, &sprite);
+        assert_eq!(vf, 0);
+
+        // Check the buffer pixel values are equal to the sprite.
+        // This is the normal case so we don't care about overflow.
+        for (j, byte) in sprite.iter().enumerate() {
+            let cur_y = y as usize + j;
+            for i in 0..8 {
+                let cur_x = x + i;
+                let bit = (byte >> (7 - i)) & 1;
+                let buf_ind: usize = (WIDTH * cur_y) + cur_x as usize;
+                if bit == 1 {
+                    assert_eq!(disp.buf[buf_ind], ON_PIXEL);
+                } else {
+                    assert_eq!(disp.buf[buf_ind], OFF_PIXEL);
+                }
+            }
         }
     }
 }
