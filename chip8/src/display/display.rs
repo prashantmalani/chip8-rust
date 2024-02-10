@@ -176,4 +176,39 @@ mod tests {
 
     }
 
+    #[test]
+    // Case where already on pixels are switched off by the sprite.
+    fn update_buf_sprite_vf_check() {
+        let mut disp = Display{buf: [OFF_PIXEL; WIDTH * HEIGHT], window: None};
+        // Use a sprite for the letter "F"
+        let sprite = vec![0xF0, 0x80, 0xF0, 0x80, 0x80];
+
+        let x = 32;
+        let y = 16;
+
+        // Set the display buffer as if the sprite has already been drawn.
+        for (j, byte) in sprite.iter().enumerate() {
+            let cur_y = y as usize + j;
+            for i in 0..8 {
+                let cur_x = x + i;
+                let bit = (byte >> (7 - i)) & 1;
+                let buf_ind: usize = (WIDTH * cur_y) + cur_x as usize;
+                disp.buf[buf_ind] = if bit == 1 { ON_PIXEL } else { OFF_PIXEL };
+            }
+        }
+
+        let vf = disp.update_buf_sprite(x, y, &sprite);
+        assert_eq!(vf, 1);
+
+        // All the pixels should be switched off.
+        for (j, byte) in sprite.iter().enumerate() {
+            let cur_y = y as usize + j;
+            for i in 0..8 {
+                let cur_x = x + i;
+                let bit = (byte >> (7 - i)) & 1;
+                let buf_ind: usize = (WIDTH * cur_y) + cur_x as usize;
+                assert_eq!(disp.buf[buf_ind], OFF_PIXEL)
+            }
+        }
+    }
 }
