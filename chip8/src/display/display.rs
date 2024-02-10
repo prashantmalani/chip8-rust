@@ -136,4 +136,44 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    // Test the sprite doesn't wrap around.
+    fn update_buf_edge() {
+        let mut disp = Display{buf: [OFF_PIXEL; WIDTH * HEIGHT], window: None};
+        // Use a sprite for the letter "F"
+        let sprite = vec![0xF0, 0x80, 0xF0, 0x80, 0x80];
+
+        let x = 60;
+        let y = 29;
+        let vf = disp.update_buf_sprite(x, y, &sprite);
+        assert_eq!(vf, 0);
+
+        // First check that the edge *is* filled
+        for (j, byte) in sprite[..(HEIGHT-y as usize)].iter().enumerate() {
+            let cur_y = y as usize + j;
+            for i in 0..(WIDTH-x as usize) {
+                let cur_x = x as usize + i;
+                let bit = (byte >> (7 - i)) & 1;
+                let buf_ind: usize = (WIDTH * cur_y) + cur_x as usize;
+                if bit == 1 {
+                    assert_eq!(disp.buf[buf_ind], ON_PIXEL);
+                } else {
+                    assert_eq!(disp.buf[buf_ind], OFF_PIXEL);
+                }
+            }
+        }
+
+        // Now check that the rest i.e the wrapped around part isn't drawn.
+        for (j, byte) in sprite[(HEIGHT-y as usize)..].iter().enumerate() {
+            let cur_y = y as usize + j;
+            for i in (WIDTH-x as usize)..8 {
+                let cur_x = x as usize + i;
+                let buf_ind: usize = (WIDTH * cur_y) + cur_x as usize;
+                assert_eq!(disp.buf[buf_ind], OFF_PIXEL);
+            }
+        }
+
+    }
+
 }
