@@ -125,9 +125,8 @@ mod tests {
         for (j, byte) in sprite.iter().enumerate() {
             let cur_y = y as usize + j;
             for i in 0..8 {
-                let cur_x = x + i;
                 let bit = (byte >> (7 - i)) & 1;
-                let buf_ind: usize = (WIDTH * cur_y) + cur_x as usize;
+                let buf_ind: usize = (WIDTH * cur_y) + (x + i) as usize;
                 if bit == 1 {
                     assert_eq!(disp.buf[buf_ind], ON_PIXEL);
                 } else {
@@ -153,9 +152,8 @@ mod tests {
         for (j, byte) in sprite[..(HEIGHT-y as usize)].iter().enumerate() {
             let cur_y = y as usize + j;
             for i in 0..(WIDTH-x as usize) {
-                let cur_x = x as usize + i;
                 let bit = (byte >> (7 - i)) & 1;
-                let buf_ind: usize = (WIDTH * cur_y) + cur_x as usize;
+                let buf_ind: usize = (WIDTH * cur_y) + (x as usize + i);
                 if bit == 1 {
                     assert_eq!(disp.buf[buf_ind], ON_PIXEL);
                 } else {
@@ -165,11 +163,10 @@ mod tests {
         }
 
         // Now check that the rest i.e the wrapped around part isn't drawn.
-        for (j, byte) in sprite[(HEIGHT-y as usize)..].iter().enumerate() {
+        for (j, _) in sprite[(HEIGHT-y as usize)..].iter().enumerate() {
             let cur_y = y as usize + j;
             for i in (WIDTH-x as usize)..8 {
-                let cur_x = x as usize + i;
-                let buf_ind: usize = (WIDTH * cur_y) + cur_x as usize;
+                let buf_ind: usize = (WIDTH * cur_y) + (x as usize + i);
                 assert_eq!(disp.buf[buf_ind], OFF_PIXEL);
             }
         }
@@ -190,9 +187,8 @@ mod tests {
         for (j, byte) in sprite.iter().enumerate() {
             let cur_y = y as usize + j;
             for i in 0..8 {
-                let cur_x = x + i;
                 let bit = (byte >> (7 - i)) & 1;
-                let buf_ind: usize = (WIDTH * cur_y) + cur_x as usize;
+                let buf_ind: usize = (WIDTH * cur_y) + (x + i) as usize;
                 disp.buf[buf_ind] = if bit == 1 { ON_PIXEL } else { OFF_PIXEL };
             }
         }
@@ -204,9 +200,7 @@ mod tests {
         for (j, byte) in sprite.iter().enumerate() {
             let cur_y = y as usize + j;
             for i in 0..8 {
-                let cur_x = x + i;
-                let bit = (byte >> (7 - i)) & 1;
-                let buf_ind: usize = (WIDTH * cur_y) + cur_x as usize;
+                let buf_ind: usize = (WIDTH * cur_y) + (x + 1) as usize;
                 assert_eq!(disp.buf[buf_ind], OFF_PIXEL)
             }
         }
