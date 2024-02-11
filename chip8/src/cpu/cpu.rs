@@ -101,16 +101,16 @@ impl Cpu {
         self.v[0xf] = disp.draw(x, y, &sprite);
     }
 
-    pub fn decode(&mut self, instr: u16, disp: &mut Display, mem: Option<&Memory>) -> Result<i32, String>{
+    pub fn decode(&mut self, instr: u16, disp: Option<&mut Display>, mem: Option<&Memory>) -> Result<i32, String>{
             match instr {
-            0x00e0 => disp.clear(),
+            0x00e0 => disp.unwrap().clear(),
             instr2 => {
                 match (instr2 >> 12) & 0xF {
                     0x1 => self.handle_jump(instr2),
                     0xA => self.set_i(instr2),
                     0x6 => self.set_v(instr2),
                     0x7 => self.add_v(instr2),
-                    0xD => self.handle_draw(instr2, mem, disp),
+                    0xD => self.handle_draw(instr2, mem, &mut disp.unwrap()),
                     _ => {
                         return Err(String::from("Unknown instruction: ") + &instr2.to_string());
                     }
@@ -167,32 +167,29 @@ mod tests {
     #[test]
     fn decode_invalid() {
         let mut cpu = Cpu::new();
-        let mut disp = Display::new();
-        assert!(cpu.decode(0x9000, &mut disp, None).is_err());
+        assert!(cpu.decode(0x9000, None, None).is_err());
     }
 
     #[test]
     fn decode_disp_clear() {
         let mut cpu = Cpu::new();
         let mut disp = Display::new();
-        assert!(cpu.decode(0x00e0, &mut disp, None).is_ok());
+        assert!(cpu.decode(0x00e0, Some(&mut disp), None).is_ok());
     }
 
     #[test]
     fn decode_set_i() {
         let mut cpu = Cpu::new();
-        let mut disp = Display::new();
-        assert!(cpu.decode(0xa22a, &mut disp, None).is_ok());
+        assert!(cpu.decode(0xa22a, None, None).is_ok());
         assert_eq!(cpu.i, 0x22a);
     }
 
     #[test]
     fn decode_set_v() {
         let mut cpu = Cpu::new();
-        let mut disp = Display::new();
-        assert!(cpu.decode(0x600c, &mut disp, None).is_ok());
+        assert!(cpu.decode(0x600c, None, None).is_ok());
         assert_eq!(cpu.v[0], 0xc);
-        assert!(cpu.decode(0x6FFE, &mut disp, None).is_ok());
+        assert!(cpu.decode(0x6FFE, None, None).is_ok());
         assert_eq!(cpu.v[0xF], 0xFE);  
     }
 
@@ -217,11 +214,9 @@ mod tests {
     #[test]
     fn handle_jump() {
         let mut cpu = Cpu::new();
-        let mut disp = Display::new();
-
         let instr = (0x1 << 12) | 0x123;
 
-        assert!(cpu.decode(instr, &mut disp, None).is_ok());
+        assert!(cpu.decode(instr, None, None).is_ok());
         assert_eq!(cpu.pc, 0x123);
     }
 
@@ -255,7 +250,6 @@ mod tests {
         assert_eq!(ret_x, x);
         assert_eq!(ret_y, y);
         assert_eq!(&vec[..], &expected_sprite[..]);
-
     }
 
 }
