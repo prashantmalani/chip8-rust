@@ -103,7 +103,7 @@ impl Cpu {
             instr2 => {
                 match (instr2 >> 12) & 0xF {
                     0xA => self.set_i(instr2),
-                    0x6 => self.add_v(instr2),
+                    0x6 => self.set_v(instr2),
                     0x7 => self.add_v(instr2),
                     0xD => self.handle_draw(instr2, mem, disp),
                     _ => {
