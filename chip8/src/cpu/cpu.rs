@@ -65,6 +65,10 @@ impl Cpu {
         self.v[ind as usize] = new_reg;
     }
 
+    fn handle_jump(&mut self, instr: u16) {
+        self.pc = instr & 0xFFF;
+    }
+
     /*
        Decodes the draw instruction: DXYN
 
@@ -102,6 +106,7 @@ impl Cpu {
             0x00e0 => disp.clear(),
             instr2 => {
                 match (instr2 >> 12) & 0xF {
+                    0x1 => self.handle_jump(instr2),
                     0xA => self.set_i(instr2),
                     0x6 => self.set_v(instr2),
                     0x7 => self.add_v(instr2),
@@ -207,6 +212,17 @@ mod tests {
         cpu.add_v(instr);
         assert_eq!(cpu.v[x], 0x31);
         assert_eq!(cpu.v[0xf], 0);
+    }
+
+    #[test]
+    fn handle_jump() {
+        let mut cpu = Cpu::new();
+        let mut disp = Display::new();
+
+        let instr = (0x1 << 12) | 0x123;
+
+        assert!(cpu.decode(instr, &mut disp, None).is_ok());
+        assert_eq!(cpu.pc, 0x123);
     }
 
     #[test]
