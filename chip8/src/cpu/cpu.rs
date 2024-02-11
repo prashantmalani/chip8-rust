@@ -69,6 +69,15 @@ impl Cpu {
         self.pc = instr & 0xFFF;
     }
 
+    fn skip_vx_equal(&mut self, instr: u16) {
+        let val = instr & 0xFF;
+        let x = (instr >> 8) & 0xF;
+
+        if self.v[x as usize] == val as u8 {
+            self.pc = self.pc + 2;
+        }
+    }
+
     /*
        Decodes the draw instruction: DXYN
 
@@ -107,6 +116,7 @@ impl Cpu {
             instr2 => {
                 match (instr2 >> 12) & 0xF {
                     0x1 => self.handle_jump(instr2),
+                    0x3 => self.skip_vx_equal(instr2),
                     0xA => self.set_i(instr2),
                     0x6 => self.set_v(instr2),
                     0x7 => self.add_v(instr2),
@@ -218,6 +228,25 @@ mod tests {
 
         assert!(cpu.decode(instr, None, None).is_ok());
         assert_eq!(cpu.pc, 0x123);
+    }
+
+    #[test]
+    fn decode_skip_vx_eq() {
+        let mut cpu = Cpu::new();
+        const X: u8 = 0x2;
+        const NN: u8 = 0x45;
+        let instr = ((0x3 << 12) | (X as u16 )<< 8 | NN as u16) as u16;
+        const ORIG_PC: u16 = 0x500;
+        cpu.pc = ORIG_PC;
+        cpu.v[X as usize] = NN;
+        assert!(cpu.decode(instr, None, None).is_ok());
+        assert_eq!(cpu.pc, ORIG_PC + 2);
+
+        // Now change the VX value, so we can check the not-equal case.
+        cpu.pc = ORIG_PC;
+        cpu.v[X as usize] = NN + 1;
+        assert!(cpu.decode(instr, None, None).is_ok());
+        assert_eq!(cpu.pc, ORIG_PC);
     }
 
     #[test]
