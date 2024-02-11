@@ -55,6 +55,16 @@ impl Cpu {
         self.v[ind as usize] = val;
     }
 
+    fn add_v(&mut self, instr: u16) {
+        let val = instr & 0xFF;
+        let ind = (instr >> 8) & 0xF;
+
+        let old_reg = self.v[ind as usize] as u32;
+        let new_reg = (old_reg + val as u32) as u8;
+        // Don't update the VF register even if there is an overflow.
+        self.v[ind as usize] = new_reg;
+    }
+
     /*
        Decodes the draw instruction: DXYN
 
@@ -93,7 +103,8 @@ impl Cpu {
             instr2 => {
                 match (instr2 >> 12) & 0xF {
                     0xA => self.set_i(instr2),
-                    0x6 => self.set_v(instr2),
+                    0x6 => self.add_v(instr2),
+                    0x7 => self.add_v(instr2),
                     0xD => self.handle_draw(instr2, mem, disp),
                     _ => {
                         return Err(String::from("Unknown instruction: ") + &instr2.to_string());
@@ -178,6 +189,24 @@ mod tests {
         assert_eq!(cpu.v[0], 0xc);
         assert!(cpu.decode(0x6FFE, &mut disp, None).is_ok());
         assert_eq!(cpu.v[0xF], 0xFE);  
+    }
+
+    #[test]
+    fn decode_add_v() {
+        let mut cpu = Cpu::new();
+        let x = 0x4 as usize;
+        let nn = 0x32;
+        cpu.v[x] = 0x32;
+        let instr = ((0x7 << 12) | (x << 8) | nn) as u16;
+        cpu.add_v(instr);
+        assert_eq!(cpu.v[x], 0x64);
+        assert_eq!(cpu.v[0xf], 0);
+
+        // Test the overflow case.
+        cpu.v[x] = 0xFF;
+        cpu.add_v(instr);
+        assert_eq!(cpu.v[x], 0x31);
+        assert_eq!(cpu.v[0xf], 0);
     }
 
     #[test]
