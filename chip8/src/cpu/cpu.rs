@@ -122,7 +122,7 @@ impl Cpu {
                     0x7 => self.add_v(instr2),
                     0xD => self.handle_draw(instr2, mem, &mut disp.unwrap()),
                     _ => {
-                        return Err(String::from("Unknown instruction: ") + &instr2.to_string());
+                        return Err(String::from("Unknown instruction: 0x") + format!("{:X}", &instr2).as_str());
                     }
                 }
             }
