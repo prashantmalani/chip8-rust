@@ -345,17 +345,18 @@ mod tests {
         const VAL1: u8 = 0x50;
         const VAL2: u8 = 0x45;
         let instr = ((0x8 << 12) | (X as u16 ) << 8 | (Y as u16) << 4) | 0x5;
+
         cpu.v[X as usize] = VAL1 as u8;
         cpu.v[Y as usize] = VAL2 as u8;
         assert!(cpu.decode(instr, None, None).is_ok());
-        assert_eq!(cpu.v[X as usize], (VAL1 - VAL2));
+        assert_eq!(cpu.v[X as usize], VAL1 - VAL2);
         assert_eq!(cpu.v[0xF], 1);
 
         // Swap the values so we can see how the underflow works.
         cpu.v[X as usize] = VAL2 as u8;
         cpu.v[Y as usize] = VAL1 as u8;
         assert!(cpu.decode(instr, None, None).is_ok());
-        assert_eq!(cpu.v[X as usize], (VAL2 - VAL1) as u8);
+        assert_eq!(cpu.v[X as usize], VAL2.wrapping_sub(VAL1));
         assert_eq!(cpu.v[0xF], 0);
     }
 
