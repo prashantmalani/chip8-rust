@@ -96,6 +96,31 @@ impl Cpu {
         }
     }
 
+    fn arith_vx_minus_vy(&mut self, instr: u16) {
+        let x_ind = (instr >> 8) & 0xF;
+        let y_ind = (instr >> 4) & 0xF;
+
+        let vx = self.v[x_ind as usize];
+        let vy = self.v[y_ind as usize];
+        let mut result: u8;
+        if vx > vy {
+            self.v[0xF] = 1;
+        } else {
+            self.v[0xF] = 0;
+        }
+
+        let result = vx.wrapping_sub(vy);
+        self.v[x_ind as usize] = result;
+    }
+
+    fn handle_logic_arith(&mut self, instr: u16) -> Result<i32, String> {
+        match instr & 0xF {
+            5 => self.arith_vx_minus_vy(instr),
+            _ => return Err(String::from("Unhandled instruction: 0x") + format!("{:X}", &instr).as_str()),
+        }
+        return Ok(0);
+    }
+
     /*
        Decodes the draw instruction: DXYN
 
@@ -140,6 +165,9 @@ impl Cpu {
                     0xA => self.set_i(instr2),
                     0x6 => self.set_v(instr2),
                     0x7 => self.add_v(instr2),
+                    0x8 => if let Err(e) = self.handle_logic_arith(instr2) {
+                        return Err(e);
+                    },
                     0xD => self.handle_draw(instr2, mem, &mut disp.unwrap()),
                     _ => {
                         return Err(String::from("Unknown instruction: 0x") + format!("{:X}", &instr2).as_str());
@@ -308,6 +336,29 @@ mod tests {
         assert!(cpu.decode(instr, None, None).is_ok());
         assert_eq!(cpu.pc, ORIG_PC);
     }
+
+    #[test]
+    fn decode_arith_vx_minis_vy() {
+        let mut cpu = Cpu::new();
+        const X: u8 = 0x2;
+        const Y: u8 = 0x3;
+        const VAL1: u8 = 0x50;
+        const VAL2: u8 = 0x45;
+        let instr = ((0x8 << 12) | (X as u16 ) << 8 | (Y as u16) << 4) | 0x5;
+        cpu.v[X as usize] = VAL1 as u8;
+        cpu.v[Y as usize] = VAL2 as u8;
+        assert!(cpu.decode(instr, None, None).is_ok());
+        assert_eq!(cpu.v[X as usize], (VAL1 - VAL2));
+        assert_eq!(cpu.v[0xF], 1);
+
+        // Swap the values so we can see how the underflow works.
+        cpu.v[X as usize] = VAL2 as u8;
+        cpu.v[Y as usize] = VAL1 as u8;
+        assert!(cpu.decode(instr, None, None).is_ok());
+        assert_eq!(cpu.v[X as usize], (VAL2 - VAL1) as u8);
+        assert_eq!(cpu.v[0xF], 0);
+    }
+
 
     #[test]
     fn get_sprite() {
