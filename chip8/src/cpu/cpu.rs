@@ -367,7 +367,7 @@ mod tests {
     }
 
     #[test]
-    fn decode_arith_vx_minis_vy() {
+    fn decode_arith_vx_minus_vy() {
         let mut cpu = Cpu::new();
         const X: u8 = 0x2;
         const Y: u8 = 0x3;
@@ -390,7 +390,7 @@ mod tests {
     }
 
     #[test]
-    fn decode_arith_vy_minis_vx() {
+    fn decode_arith_vy_minus_vx() {
         let mut cpu = Cpu::new();
         const X: u8 = 0x2;
         const Y: u8 = 0x3;
