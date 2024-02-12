@@ -78,6 +78,15 @@ impl Cpu {
         }
     }
 
+    fn skip_vx_ne(&mut self, instr: u16) {
+        let val = instr & 0xFF;
+        let x = (instr >> 8) & 0xF;
+
+        if self.v[x as usize] != val as u8 {
+            self.pc = self.pc + 2;
+        }
+    }
+
     fn skip_vx_vy_equal(&mut self, instr: u16) {
         let x = (instr >> 8) & 0xF;
         let y = (instr >> 4) & 0xF;
@@ -126,6 +135,7 @@ impl Cpu {
                 match (instr2 >> 12) & 0xF {
                     0x1 => self.handle_jump(instr2),
                     0x3 => self.skip_vx_equal(instr2),
+                    0x4 => self.skip_vx_ne(instr2),
                     0x5 => self.skip_vx_vy_equal(instr2),
                     0xA => self.set_i(instr2),
                     0x6 => self.set_v(instr2),
@@ -257,6 +267,25 @@ mod tests {
         cpu.v[X as usize] = NN + 1;
         assert!(cpu.decode(instr, None, None).is_ok());
         assert_eq!(cpu.pc, ORIG_PC);
+    }
+
+    #[test]
+    fn decode_skip_vx_ne() {
+        let mut cpu = Cpu::new();
+        const X: u8 = 0x2;
+        const NN: u8 = 0x45;
+        let instr = ((0x4 << 12) | (X as u16 )<< 8 | NN as u16) as u16;
+        const ORIG_PC: u16 = 0x500;
+        cpu.pc = ORIG_PC;
+        cpu.v[X as usize] = NN;
+        assert!(cpu.decode(instr, None, None).is_ok());
+        assert_eq!(cpu.pc, ORIG_PC);
+
+        // Now change the VX value, so we can check the not-equal case.
+        cpu.pc = ORIG_PC;
+        cpu.v[X as usize] = NN + 1;
+        assert!(cpu.decode(instr, None, None).is_ok());
+        assert_eq!(cpu.pc, ORIG_PC + 2);
     }
 
     #[test]
