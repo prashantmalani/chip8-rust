@@ -150,12 +150,23 @@ impl Cpu {
         self.v[x_ind as usize] = vx & vy;
     }
 
+    fn logic_vx_xor_vy(&mut self, instr: u16) {
+        let x_ind = (instr >> 8) & 0xF;
+        let y_ind = (instr >> 4) & 0xF;
+
+        let vx = self.v[x_ind as usize];
+        let vy = self.v[y_ind as usize];
+
+        self.v[x_ind as usize] = vx ^ vy;
+    }
+
     fn handle_logic_arith(&mut self, instr: u16) -> Result<i32, String> {
         match instr & 0xF {
             5 => self.arith_vx_minus_vy(instr),
             7 => self.arith_vy_minus_vx(instr),
             1 => self.logic_vx_or_vy(instr),
             2 => self.logic_vx_and_vy(instr),
+            3 => self.logic_vx_xor_vy(instr),
             _ => return Err(String::from("Unhandled instruction: 0x") + format!("{:X}", &instr).as_str()),
         }
         return Ok(0);
@@ -451,6 +462,21 @@ mod tests {
         cpu.v[Y as usize] = VAL2;
         assert!(cpu.decode(instr, None, None).is_ok());
         assert_eq!(cpu.v[X as usize], 0x3);
+    }
+
+    #[test]
+    fn decode_logic_vx_xor_vy() {
+        let mut cpu = Cpu::new();
+        const X: u8 = 0x2;
+        const Y: u8 = 0x3;
+        const VAL1: u8 = 0xAA;
+        const VAL2: u8 = 0x55;
+        let instr = ((0x8 << 12) | (X as u16 ) << 8 | (Y as u16) << 4) | 0x3;
+
+        cpu.v[X as usize] = VAL1;
+        cpu.v[Y as usize] = VAL2;
+        assert!(cpu.decode(instr, None, None).is_ok());
+        assert_eq!(cpu.v[X as usize], 0xFF);
     }
 
     #[test]
