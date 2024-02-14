@@ -542,12 +542,18 @@ mod tests {
         const X: u8 = 0x2;
         const Y: u8 = 0x3;
         const VAL1: u8 = 0xAA;
+        const VAL2: u8 = 0x55;
         let instr = ((0x8 << 12) | (X as u16 ) << 8 | (Y as u16) << 4) | 0xE;
 
-        cpu.v[Y as usize] = VAL1;
+        cpu.v[X as usize] = VAL1;
         assert!(cpu.decode(instr, None, None).is_ok());
         assert_eq!(cpu.v[X as usize], 0x54);
         assert_eq!(cpu.v[0xF], 1);
+
+        cpu.v[X as usize] = VAL2;
+        assert!(cpu.decode(instr, None, None).is_ok());
+        assert_eq!(cpu.v[X as usize], 0xAA);
+        assert_eq!(cpu.v[0xF], 0);
     }
 
     #[test]
