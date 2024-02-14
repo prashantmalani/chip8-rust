@@ -177,9 +177,27 @@ impl Cpu {
         self.v[x_ind as usize] = vx << 1;
     }
 
+    fn right_shift(&mut self, instr: u16) {
+        let x_ind = (instr >> 8) & 0xF;
+        let y_ind = (instr >> 4) & 0xF;
+
+        // TODO: Add a config to control this behavior
+        //self.v[x_ind as usize] = self.v[y_ind as usize];
+        let vx = self.v[x_ind as usize];
+
+        if (vx & 0x1) == 1 {
+            self.v[0xF] = 1;
+        } else {
+            self.v[0xF] = 0;
+        }
+
+        self.v[x_ind as usize] = vx >> 1;
+    }
+
     fn handle_logic_arith(&mut self, instr: u16) -> Result<i32, String> {
         match instr & 0xF {
             5 => self.arith_vx_minus_vy(instr),
+            6 => self.right_shift(instr),
             7 => self.arith_vy_minus_vx(instr),
             1 => self.logic_vx_or_vy(instr),
             2 => self.logic_vx_and_vy(instr),
@@ -529,6 +547,26 @@ mod tests {
         cpu.v[Y as usize] = VAL1;
         assert!(cpu.decode(instr, None, None).is_ok());
         assert_eq!(cpu.v[X as usize], 0x54);
+        assert_eq!(cpu.v[0xF], 1);
+    }
+
+    #[test]
+    fn decode_right_shift() {
+        let mut cpu = Cpu::new();
+        const X: u8 = 0x2;
+        const Y: u8 = 0x3;
+        const VAL1: u8 = 0xAA;
+        const VAL2: u8 = 0x55;
+        let instr = ((0x8 << 12) | (X as u16 ) << 8 | (Y as u16) << 4) | 0x6;
+
+        cpu.v[X as usize] = VAL1;
+        assert!(cpu.decode(instr, None, None).is_ok());
+        assert_eq!(cpu.v[X as usize], 0x55);
+        assert_eq!(cpu.v[0xF], 0);
+
+        cpu.v[X as usize] = VAL2;
+        assert!(cpu.decode(instr, None, None).is_ok());
+        assert_eq!(cpu.v[X as usize], 0x2A);
         assert_eq!(cpu.v[0xF], 1);
     }
 
