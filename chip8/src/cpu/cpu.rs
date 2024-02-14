@@ -170,6 +170,8 @@ impl Cpu {
 
         if (vx & 0x80) >> 0x7 == 1 {
             self.v[0xF] = 1;
+        } else {
+            self.v[0xF] = 0;
         }
 
         self.v[x_ind as usize] = vx << 1;
