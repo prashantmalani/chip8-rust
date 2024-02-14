@@ -165,7 +165,7 @@ impl Cpu {
         let y_ind = (instr >> 4) & 0xF;
 
         // TODO: Add a config to control this behavior
-        self.v[x_ind as usize] = self.v[y_ind as usize];
+        //self.v[x_ind as usize] = self.v[y_ind as usize];
         let vx = self.v[x_ind as usize];
 
         if (vx & 0x80) >> 0x7 == 1 {
