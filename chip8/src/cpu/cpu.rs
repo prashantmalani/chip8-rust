@@ -188,6 +188,24 @@ impl Cpu {
         return Ok(0);
     }
 
+    fn get_font_char(&self, instr: u16) -> u8 {
+        let x_ind = (instr >> 8) & 0xF;
+        return self.v[x_ind as usize] & 0xF;
+    }
+
+    fn font_character(&mut self, instr: u16, mem: &Memory) {
+        let chr = self.get_font_char(instr);
+        self.i = mem.get_font_addr(chr) as u16;
+    }
+
+    fn handle_f_instructions(&mut self, instr: u16, mem: Option<&Memory>) -> Result<i32, String> {
+        match instr & 0xFF {
+            0x29 => self.font_character(instr, mem.unwrap()),
+            _ => return Err(String::from("Unhandled instruction: 0x")  + format!("{:X}", &instr).as_str())
+        }
+        return Ok(0);
+    }
+
     /*
        Decodes the draw instruction: DXYN
 
@@ -236,6 +254,9 @@ impl Cpu {
                         return Err(e);
                     },
                     0xD => self.handle_draw(instr2, mem, &mut disp.unwrap()),
+                    0xF => if let Err(e) = self.handle_f_instructions(instr2, mem) {
+                        return Err(e);
+                    }
                     _ => {
                         return Err(String::from("Unknown instruction: 0x") + format!("{:X}", &instr2).as_str());
                     }
@@ -507,6 +528,17 @@ mod tests {
         assert!(cpu.decode(instr, None, None).is_ok());
         assert_eq!(cpu.v[X as usize], 0x54);
         assert_eq!(cpu.v[0xF], 1);
+    }
+
+    // The memory fetch aspect is tested in the memory module, so we just need to test that
+    // we can get the character value out correctly.
+    #[test]
+    fn get_font_char() {
+        let mut cpu = Cpu::new();
+        const X: usize = 0x4;
+        cpu.v[X] = 0xA;
+        let instr = 0xF << 12 | (X << 8)  as u16 | 0x29;
+        assert_eq!(cpu.get_font_char(instr), 0xA)
     }
 
     #[test]
