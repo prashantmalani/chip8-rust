@@ -218,9 +218,18 @@ impl Cpu {
         self.i = mem.get_font_addr(chr) as u16;
     }
 
+    fn store(&self, instr: u16, mem: &mut Memory) {
+        // TODO: Add config to update the i with each copy.
+        let ind = (instr >> 8)  & 0xF;
+        for i in 0..=ind {
+            mem.mem[(self.i + i) as usize] = self.v[i as usize];
+        }
+    }
+
     fn handle_f_instructions(&mut self, instr: u16, mem: Option<&mut Memory>) -> Result<i32, String> {
         match instr & 0xFF {
             0x29 => self.font_character(instr, &*mem.unwrap()),
+            0x55 => self.store(instr, mem.unwrap()),
             _ => return Err(String::from("Unhandled instruction: 0x")  + format!("{:X}", &instr).as_str())
         }
         return Ok(0);
@@ -585,6 +594,30 @@ mod tests {
         cpu.v[X] = 0xA;
         let instr = 0xF << 12 | (X << 8)  as u16 | 0x29;
         assert_eq!(cpu.get_font_char(instr), 0xA)
+    }
+
+    #[test]
+    fn store() {
+        let mut cpu = Cpu::new();
+        let mut mem = Memory { mem: [0; 4096] };
+        const I : usize = 0x600;
+        const X: u8 = 0x4;
+        const VAL: u8 = 0xAA;
+        let instr = (0xF << 12) | (X as u16) << 8 | 0x55;
+
+        for i in 0..=X {
+            cpu.v[i as usize] = VAL;
+        }
+        cpu.i = I as u16;
+
+        assert!(cpu.decode(instr, None, Some(&mut mem)).is_ok());
+        for j in 0..=X {
+            assert_eq!(mem.mem[I + j as usize], VAL);
+        }
+
+        // Make sure that the next memory address was unaffected.
+        assert_eq!(mem.mem[I + 1+ X as usize], 0);
+
     }
 
     #[test]
