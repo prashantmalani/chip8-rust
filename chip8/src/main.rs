@@ -47,7 +47,7 @@ fn main() {
             },
         };
 
-        let decode = match cpu.decode(instr, Some(&mut disp), Some(&mem)) {
+        let decode = match cpu.decode(instr, Some(&mut disp), Some(&mut mem)) {
             Err(e) => {
                 println!("Decode failed: {}", e);
                 break;

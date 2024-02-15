@@ -218,9 +218,9 @@ impl Cpu {
         self.i = mem.get_font_addr(chr) as u16;
     }
 
-    fn handle_f_instructions(&mut self, instr: u16, mem: Option<&Memory>) -> Result<i32, String> {
+    fn handle_f_instructions(&mut self, instr: u16, mem: Option<&mut Memory>) -> Result<i32, String> {
         match instr & 0xFF {
-            0x29 => self.font_character(instr, mem.unwrap()),
+            0x29 => self.font_character(instr, &*mem.unwrap()),
             _ => return Err(String::from("Unhandled instruction: 0x")  + format!("{:X}", &instr).as_str())
         }
         return Ok(0);
@@ -254,11 +254,11 @@ impl Cpu {
     }
 
     fn handle_draw(&mut self, instr: u16, mem: Option<&Memory>, disp: &mut Display) {
-        let (x, y, sprite) =self.get_sprite(instr, &mem.unwrap());
+        let (x, y, sprite) =self.get_sprite(instr, mem.unwrap());
         self.v[0xf] = disp.draw(x, y, &sprite);
     }
 
-    pub fn decode(&mut self, instr: u16, disp: Option<&mut Display>, mem: Option<&Memory>) -> Result<i32, String>{
+    pub fn decode(&mut self, instr: u16, disp: Option<&mut Display>, mem: Option<&mut Memory>) -> Result<i32, String>{
             match instr {
             0x00e0 => disp.unwrap().clear(),
             instr2 => {
@@ -273,7 +273,7 @@ impl Cpu {
                     0x8 => if let Err(e) = self.handle_logic_arith(instr2) {
                         return Err(e);
                     },
-                    0xD => self.handle_draw(instr2, mem, &mut disp.unwrap()),
+                    0xD => self.handle_draw(instr2, Some(&*mem.unwrap()), &mut disp.unwrap()),
                     0xF => if let Err(e) = self.handle_f_instructions(instr2, mem) {
                         return Err(e);
                     }
