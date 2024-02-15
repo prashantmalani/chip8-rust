@@ -234,10 +234,25 @@ impl Cpu {
         }
     }
 
+    fn bcd(&self, instr: u16, mem: &mut Memory) {
+        let x = (instr >> 8) & 0xF;
+        let mut val = self.v[x as usize];
+
+        let digit3 = val % 10;
+        val = val / 10;
+        let digit2 = val % 10;
+        val = val / 10;
+        let digit1 = val % 10;
+
+        mem.mem[self.i as usize] = digit1;
+        mem.mem[(self.i + 1) as usize] = digit2;
+        mem.mem[(self.i + 2) as usize] = digit3;
+    }
 
     fn handle_f_instructions(&mut self, instr: u16, mem: Option<&mut Memory>) -> Result<i32, String> {
         match instr & 0xFF {
             0x29 => self.font_character(instr, &*mem.unwrap()),
+            0x33 => self.bcd(instr, mem.unwrap()),
             0x55 => self.store(instr, mem.unwrap()),
             0x65 => self.load(instr, mem.unwrap()),
             _ => return Err(String::from("Unhandled instruction: 0x")  + format!("{:X}", &instr).as_str())
@@ -651,6 +666,25 @@ mod tests {
 
         // Make sure that the next memory address was unaffected.
         assert_eq!(cpu.v[X as usize + 1], 0);
+    }
+
+    #[test]
+    fn bcd() {
+        let mut cpu = Cpu::new();
+        let mut mem = Memory { mem: [0; 4096]};
+        const I: usize = 0x500;
+        const X: u8 = 0x4;
+        const VAL: u8 = 139;
+
+        let instr = (0xF << 12) | (X as u16) << 8 | 0x33;
+        cpu.i = I as u16;
+        cpu.v[X as usize] = VAL;
+
+        assert!(cpu.decode(instr, None, Some(&mut mem)).is_ok());
+
+        assert_eq!(mem.mem[I], 1);
+        assert_eq!(mem.mem[I + 1], 3);
+        assert_eq!(mem.mem[I + 2], 9);
     }
 
     #[test]
