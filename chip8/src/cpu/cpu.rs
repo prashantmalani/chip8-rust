@@ -69,6 +69,13 @@ impl Cpu {
         self.pc = instr & 0xFFF;
     }
 
+    fn subroutine(&mut self, instr: u16) {
+        let addr = instr & 0xFFF;
+        self.stack.push_back(self.pc);
+
+        self.pc = addr;
+    }
+
     fn skip_vx_equal(&mut self, instr: u16) {
         let val = instr & 0xFF;
         let x = (instr >> 8) & 0xF;
@@ -311,6 +318,7 @@ impl Cpu {
             instr2 => {
                 match (instr2 >> 12) & 0xF {
                     0x1 => self.handle_jump(instr2),
+                    0x2 => self.subroutine(instr),
                     0x3 => self.skip_vx_equal(instr2),
                     0x4 => self.skip_vx_ne(instr2),
                     0x5 => self.skip_vx_vy_equal(instr2),
@@ -431,6 +439,24 @@ mod tests {
 
         assert!(cpu.decode(instr, None, None).is_ok());
         assert_eq!(cpu.pc, 0x123);
+    }
+
+    #[test]
+    fn subroutine() {
+        let mut cpu = Cpu::new();
+        const OLD_ADDR: u16 = 0x654;
+        const NEW_ADDR: u16 = 0x456;
+        let instr = (0x2 << 12) | NEW_ADDR;
+
+        cpu.pc = OLD_ADDR;
+
+        assert!(cpu.decode(instr, None, None).is_ok());
+        assert_eq!(cpu.pc, NEW_ADDR);
+        if let Some(val) = cpu.stack.back() {
+            assert_eq!(*val, OLD_ADDR)
+        } else {
+            panic!("Stack is empty");
+        }
     }
 
     #[test]
