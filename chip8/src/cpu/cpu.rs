@@ -76,6 +76,14 @@ impl Cpu {
         self.pc = addr;
     }
 
+    fn return_routine(&mut self) {
+        if let Some(addr) = self.stack.pop_back() {
+            self.pc = addr;
+        } else {
+            panic!("Trying to pop and empty stack, can't return.")
+        }
+    }
+
     fn skip_vx_equal(&mut self, instr: u16) {
         let val = instr & 0xFF;
         let x = (instr >> 8) & 0xF;
@@ -315,6 +323,7 @@ impl Cpu {
     pub fn decode(&mut self, instr: u16, disp: Option<&mut Display>, mem: Option<&mut Memory>) -> Result<i32, String>{
             match instr {
             0x00e0 => disp.unwrap().clear(),
+            0x00ee => self.return_routine(),
             instr2 => {
                 match (instr2 >> 12) & 0xF {
                     0x1 => self.handle_jump(instr2),
@@ -457,6 +466,19 @@ mod tests {
         } else {
             panic!("Stack is empty");
         }
+    }
+
+    #[test]
+    fn return_routine() {
+        let mut cpu = Cpu::new();
+        const OLD_ADDR: u16 = 0x654;
+        const NEW_ADDR: u16 = 0x456;
+        cpu.pc = NEW_ADDR;
+
+        cpu.stack.push_back(OLD_ADDR);
+        assert!(cpu.decode(0x00EE, None, None).is_ok());
+        assert_eq!(cpu.pc, OLD_ADDR);
+        assert!(cpu.stack.is_empty());
     }
 
     #[test]
