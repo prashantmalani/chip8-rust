@@ -1,6 +1,6 @@
-use std::collections::LinkedList;
+use std::{collections::LinkedList, sync::Arc};
 
-use crate::{mem::mem::Memory, display::display::{Display, WIDTH, HEIGHT}};
+use crate::{mem::mem::Memory, display::display::{Display, WIDTH, HEIGHT}, timer::timer::Timer};
 
 pub struct Cpu {
     pc: u16, // program counter
@@ -329,7 +329,8 @@ impl Cpu {
         self.v[0xf] = disp.draw(x, y, &sprite);
     }
 
-    pub fn decode(&mut self, instr: u16, disp: Option<&mut Display>, mem: Option<&mut Memory>) -> Result<i32, String>{
+    pub fn decode(&mut self, instr: u16, disp: Option<&mut Display>, mem: Option<&mut Memory>,
+        timer: Option<&mut Arc<Timer>>) -> Result<i32, String>{
             match instr {
             0x00e0 => disp.unwrap().clear(),
             0x00ee => self.return_routine(),
@@ -406,29 +407,29 @@ mod tests {
     #[test]
     fn decode_invalid() {
         let mut cpu = Cpu::new();
-        assert!(cpu.decode(0x9000, None, None).is_err());
+        assert!(cpu.decode(0x9000, None, None, None).is_err());
     }
 
     #[test]
     fn decode_disp_clear() {
         let mut cpu = Cpu::new();
         let mut disp = Display::new();
-        assert!(cpu.decode(0x00e0, Some(&mut disp), None).is_ok());
+        assert!(cpu.decode(0x00e0, Some(&mut disp), None, None).is_ok());
     }
 
     #[test]
     fn decode_set_i() {
         let mut cpu = Cpu::new();
-        assert!(cpu.decode(0xa22a, None, None).is_ok());
+        assert!(cpu.decode(0xa22a, None, None, None).is_ok());
         assert_eq!(cpu.i, 0x22a);
     }
 
     #[test]
     fn decode_set_v() {
         let mut cpu = Cpu::new();
-        assert!(cpu.decode(0x600c, None, None).is_ok());
+        assert!(cpu.decode(0x600c, None, None, None).is_ok());
         assert_eq!(cpu.v[0], 0xc);
-        assert!(cpu.decode(0x6FFE, None, None).is_ok());
+        assert!(cpu.decode(0x6FFE, None, None, None).is_ok());
         assert_eq!(cpu.v[0xF], 0xFE);  
     }
 
@@ -455,7 +456,7 @@ mod tests {
         let mut cpu = Cpu::new();
         let instr = (0x1 << 12) | 0x123;
 
-        assert!(cpu.decode(instr, None, None).is_ok());
+        assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.pc, 0x123);
     }
 
@@ -468,7 +469,7 @@ mod tests {
 
         cpu.pc = OLD_ADDR;
 
-        assert!(cpu.decode(instr, None, None).is_ok());
+        assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.pc, NEW_ADDR);
         if let Some(val) = cpu.stack.back() {
             assert_eq!(*val, OLD_ADDR)
@@ -485,7 +486,7 @@ mod tests {
         cpu.pc = NEW_ADDR;
 
         cpu.stack.push_back(OLD_ADDR);
-        assert!(cpu.decode(0x00EE, None, None).is_ok());
+        assert!(cpu.decode(0x00EE, None, None, None).is_ok());
         assert_eq!(cpu.pc, OLD_ADDR);
         assert!(cpu.stack.is_empty());
     }
@@ -499,13 +500,13 @@ mod tests {
         const ORIG_PC: u16 = 0x500;
         cpu.pc = ORIG_PC;
         cpu.v[X as usize] = NN;
-        assert!(cpu.decode(instr, None, None).is_ok());
+        assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.pc, ORIG_PC + 2);
 
         // Now change the VX value, so we can check the not-equal case.
         cpu.pc = ORIG_PC;
         cpu.v[X as usize] = NN + 1;
-        assert!(cpu.decode(instr, None, None).is_ok());
+        assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.pc, ORIG_PC);
     }
 
@@ -518,13 +519,13 @@ mod tests {
         const ORIG_PC: u16 = 0x500;
         cpu.pc = ORIG_PC;
         cpu.v[X as usize] = NN;
-        assert!(cpu.decode(instr, None, None).is_ok());
+        assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.pc, ORIG_PC);
 
         // Now change the VX value, so we can check the not-equal case.
         cpu.pc = ORIG_PC;
         cpu.v[X as usize] = NN + 1;
-        assert!(cpu.decode(instr, None, None).is_ok());
+        assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.pc, ORIG_PC + 2);
     }
 
@@ -539,13 +540,13 @@ mod tests {
         cpu.pc = ORIG_PC;
         cpu.v[X as usize] = VAL;
         cpu.v[Y as usize] = VAL;
-        assert!(cpu.decode(instr, None, None).is_ok());
+        assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.pc, ORIG_PC + 2);
 
         // Now change the VX value, so we can check the not-equal case.
         cpu.pc = ORIG_PC;
         cpu.v[X as usize] = VAL + 1;
-        assert!(cpu.decode(instr, None, None).is_ok());
+        assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.pc, ORIG_PC);
     }
 
@@ -560,7 +561,7 @@ mod tests {
 
         cpu.v[X as usize] = VAL1 as u8;
         cpu.v[Y as usize] = VAL2 as u8;
-        assert!(cpu.decode(instr, None, None).is_ok());
+        assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.v[X as usize], VAL2);
     }
 
@@ -575,14 +576,14 @@ mod tests {
 
         cpu.v[X as usize] = VAL1 as u8;
         cpu.v[Y as usize] = VAL2 as u8;
-        assert!(cpu.decode(instr, None, None).is_ok());
+        assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.v[X as usize], VAL1 - VAL2);
         assert_eq!(cpu.v[0xF], 1);
 
         // Swap the values so we can see how the underflow works.
         cpu.v[X as usize] = VAL2 as u8;
         cpu.v[Y as usize] = VAL1 as u8;
-        assert!(cpu.decode(instr, None, None).is_ok());
+        assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.v[X as usize], VAL2.wrapping_sub(VAL1));
         assert_eq!(cpu.v[0xF], 0);
     }
@@ -598,14 +599,14 @@ mod tests {
 
         cpu.v[Y as usize] = VAL1 as u8;
         cpu.v[X as usize] = VAL2 as u8;
-        assert!(cpu.decode(instr, None, None).is_ok());
+        assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.v[X as usize], VAL1 - VAL2);
         assert_eq!(cpu.v[0xF], 1);
 
         // Swap the values so we can see how the underflow works.
         cpu.v[Y as usize] = VAL2 as u8;
         cpu.v[X as usize] = VAL1 as u8;
-        assert!(cpu.decode(instr, None, None).is_ok());
+        assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.v[X as usize], VAL2.wrapping_sub(VAL1));
         assert_eq!(cpu.v[0xF], 0);
     }
@@ -621,7 +622,7 @@ mod tests {
 
         cpu.v[X as usize] = VAL1;
         cpu.v[Y as usize] = VAL2;
-        assert!(cpu.decode(instr, None, None).is_ok());
+        assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.v[X as usize], 0xFF);
     }
 
@@ -636,7 +637,7 @@ mod tests {
 
         cpu.v[X as usize] = VAL1;
         cpu.v[Y as usize] = VAL2;
-        assert!(cpu.decode(instr, None, None).is_ok());
+        assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.v[X as usize], 0x3);
     }
 
@@ -651,7 +652,7 @@ mod tests {
 
         cpu.v[X as usize] = VAL1;
         cpu.v[Y as usize] = VAL2;
-        assert!(cpu.decode(instr, None, None).is_ok());
+        assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.v[X as usize], 0xFF);
     }
 
@@ -665,12 +666,12 @@ mod tests {
         let instr = ((0x8 << 12) | (X as u16 ) << 8 | (Y as u16) << 4) | 0xE;
 
         cpu.v[X as usize] = VAL1;
-        assert!(cpu.decode(instr, None, None).is_ok());
+        assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.v[X as usize], 0x54);
         assert_eq!(cpu.v[0xF], 1);
 
         cpu.v[X as usize] = VAL2;
-        assert!(cpu.decode(instr, None, None).is_ok());
+        assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.v[X as usize], 0xAA);
         assert_eq!(cpu.v[0xF], 0);
     }
@@ -685,12 +686,12 @@ mod tests {
         let instr = ((0x8 << 12) | (X as u16 ) << 8 | (Y as u16) << 4) | 0x6;
 
         cpu.v[X as usize] = VAL1;
-        assert!(cpu.decode(instr, None, None).is_ok());
+        assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.v[X as usize], 0x55);
         assert_eq!(cpu.v[0xF], 0);
 
         cpu.v[X as usize] = VAL2;
-        assert!(cpu.decode(instr, None, None).is_ok());
+        assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.v[X as usize], 0x2A);
         assert_eq!(cpu.v[0xF], 1);
     }
@@ -720,7 +721,7 @@ mod tests {
         }
         cpu.i = I as u16;
 
-        assert!(cpu.decode(instr, None, Some(&mut mem)).is_ok());
+        assert!(cpu.decode(instr, None, Some(&mut mem), None).is_ok());
         for j in 0..=X {
             assert_eq!(mem.mem[I + j as usize], VAL);
         }
@@ -744,7 +745,7 @@ mod tests {
         }
         cpu.i = I as u16;
 
-        assert!(cpu.decode(instr, None, Some(&mut mem)).is_ok());
+        assert!(cpu.decode(instr, None, Some(&mut mem), None).is_ok());
         for j in 0..=X {
             assert_eq!(cpu.v[j as usize], VAL);
         }
@@ -765,7 +766,7 @@ mod tests {
         cpu.i = I as u16;
         cpu.v[X as usize] = VAL;
 
-        assert!(cpu.decode(instr, None, Some(&mut mem)).is_ok());
+        assert!(cpu.decode(instr, None, Some(&mut mem), None).is_ok());
 
         assert_eq!(mem.mem[I], 1);
         assert_eq!(mem.mem[I + 1], 3);
@@ -785,7 +786,7 @@ mod tests {
         cpu.i = I as u16;
         cpu.v[X as usize] = VAL;
 
-        assert!(cpu.decode(instr, None, None).is_ok());
+        assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.i, (I + VAL as usize) as u16);
     }
 
