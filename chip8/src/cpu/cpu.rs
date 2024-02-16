@@ -111,6 +111,14 @@ impl Cpu {
         }
     }
 
+    fn set_vx_to_vy(&mut self, instr: u16) {
+        let x_ind = instr >> 8 & 0xF;
+        let y_ind = instr >> 4 & 0xF;
+
+        let vy = self.v[y_ind as usize];
+        self.v[x_ind as usize] = vy;
+    }
+
     fn arith_vx_minus_vy(&mut self, instr: u16) {
         let x_ind = (instr >> 8) & 0xF;
         let y_ind = (instr >> 4) & 0xF;
@@ -211,6 +219,7 @@ impl Cpu {
 
     fn handle_logic_arith(&mut self, instr: u16) -> Result<i32, String> {
         match instr & 0xF {
+            0 => self.set_vx_to_vy(instr),
             5 => self.arith_vx_minus_vy(instr),
             6 => self.right_shift(instr),
             7 => self.arith_vy_minus_vx(instr),
@@ -538,6 +547,21 @@ mod tests {
         cpu.v[X as usize] = VAL + 1;
         assert!(cpu.decode(instr, None, None).is_ok());
         assert_eq!(cpu.pc, ORIG_PC);
+    }
+
+    #[test]
+    fn set_vx_to_vy() {
+        let mut cpu = Cpu::new();
+        const X: u8 = 0x2;
+        const Y: u8 = 0x3;
+        const VAL1: u8 = 0x50;
+        const VAL2: u8 = 0x45;
+        let instr = ((0x8 << 12) | (X as u16 ) << 8 | (Y as u16) << 4) | 0x0;
+
+        cpu.v[X as usize] = VAL1 as u8;
+        cpu.v[Y as usize] = VAL2 as u8;
+        assert!(cpu.decode(instr, None, None).is_ok());
+        assert_eq!(cpu.v[X as usize], VAL2);
     }
 
     #[test]
