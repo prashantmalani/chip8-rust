@@ -249,8 +249,21 @@ impl Cpu {
         mem.mem[(self.i + 2) as usize] = digit3;
     }
 
+    fn increment_i(&mut self, instr: u16) {
+        let x = (instr >> 8) & 0xF;
+        let val = self.v[x as usize];
+
+        let old_i = self.i as u32;
+        let result = old_i + val as u32;
+        if result >= 4096 {
+            self.v[0xF] = 1
+        }
+        self.i = (result & 0xFFFF) as u16;
+    }
+
     fn handle_f_instructions(&mut self, instr: u16, mem: Option<&mut Memory>) -> Result<i32, String> {
         match instr & 0xFF {
+            0x1E => self.increment_i(instr),
             0x29 => self.font_character(instr, &*mem.unwrap()),
             0x33 => self.bcd(instr, mem.unwrap()),
             0x55 => self.store(instr, mem.unwrap()),
@@ -685,6 +698,23 @@ mod tests {
         assert_eq!(mem.mem[I], 1);
         assert_eq!(mem.mem[I + 1], 3);
         assert_eq!(mem.mem[I + 2], 9);
+    }
+
+    #[test]
+    fn increment_i() {
+        let mut cpu = Cpu::new();
+        let mut mem = Memory { mem: [0; 4096] } ;
+
+        const I: usize = 0x500;
+        const X: u8 = 0x4;
+        const VAL: u8 = 0x24;
+
+        let instr = (0xF << 12) | (X as u16) << 8 | 0x1E;
+        cpu.i = I as u16;
+        cpu.v[X as usize] = VAL;
+
+        assert!(cpu.decode(instr, None, None).is_ok());
+        assert_eq!(cpu.i, (I + VAL as usize) as u16);
     }
 
     #[test]
