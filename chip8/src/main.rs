@@ -9,6 +9,9 @@ use cpu::cpu::Cpu;
 mod display;
 use display::display::Display;
 
+mod timer;
+use timer::timer::Timer;
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     
@@ -37,6 +40,8 @@ fn main() {
     let mut disp = Display::new();
 
     let mut cpu = Cpu::new();
+
+    let mut timers = Timer::new(false);
     // main loop
     loop {
         let instr = match cpu.fetch(&mem) {
