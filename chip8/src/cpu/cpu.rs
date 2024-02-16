@@ -285,8 +285,16 @@ impl Cpu {
         self.i = (result & 0xFFFF) as u16;
     }
 
-    fn handle_f_instructions(&mut self, instr: u16, mem: Option<&mut Memory>) -> Result<i32, String> {
+    fn set_delay(&self, instr: u16, timer: &mut Arc<Timer>) {
+        let x_ind = (instr >> 8) & 0xF;
+        let val = self.v[x_ind as usize];
+        Timer::set_delay(timer, val);
+    }
+
+    fn handle_f_instructions(&mut self, instr: u16, mem: Option<&mut Memory>,
+        timer: Option<&mut Arc<Timer>>) -> Result<i32, String> {
         match instr & 0xFF {
+            0x15 => self.set_delay(instr, timer.unwrap()),
             0x1E => self.increment_i(instr),
             0x29 => self.font_character(instr, &*mem.unwrap()),
             0x33 => self.bcd(instr, mem.unwrap()),
@@ -348,7 +356,7 @@ impl Cpu {
                         return Err(e);
                     },
                     0xD => self.handle_draw(instr2, Some(&*mem.unwrap()), &mut disp.unwrap()),
-                    0xF => if let Err(e) = self.handle_f_instructions(instr2, mem) {
+                    0xF => if let Err(e) = self.handle_f_instructions(instr2, mem, timer) {
                         return Err(e);
                     }
                     _ => {
