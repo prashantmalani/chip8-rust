@@ -291,9 +291,16 @@ impl Cpu {
         Timer::set_delay(timer, val);
     }
 
+    fn get_delay(&mut self, instr: u16, timer: &Arc<Timer>) {
+        let x_ind = (instr >> 8) & 0xF;
+        let val = Timer::get_delay(timer);
+        self.v[x_ind as usize] = val;
+    }
+
     fn handle_f_instructions(&mut self, instr: u16, mem: Option<&mut Memory>,
         timer: Option<&mut Arc<Timer>>) -> Result<i32, String> {
         match instr & 0xFF {
+            0x07 => self.get_delay(instr, &*timer.unwrap()),
             0x15 => self.set_delay(instr, timer.unwrap()),
             0x1E => self.increment_i(instr),
             0x29 => self.font_character(instr, &*mem.unwrap()),
