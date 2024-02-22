@@ -1,29 +1,22 @@
-use minifb::{Window, WindowOptions, Scale};
+use show_image::{ImageView, ImageInfo, create_window, WindowProxy};
 
 pub const WIDTH: usize = 64;
 pub const HEIGHT: usize = 32;
 
-const ON_PIXEL: u32 = 0xFFFFFF;
-const OFF_PIXEL: u32 = 0x0;
+const ON_PIXEL: u8 = 0xFF;
+const OFF_PIXEL: u8 = 0x0;
 
 // We implement the display using a linear vector of 32 bit values.
 pub struct Display {
-    buf: [u32; WIDTH * HEIGHT],
-    window: Option<Window>,
+    buf: [u8; WIDTH * HEIGHT],
+    window: Option<WindowProxy>,
 }
 
 impl Display {
     pub fn new() -> Self {
-        let mut woptions  = WindowOptions::default();
-        woptions.scale = Scale::X8;
         Display {
             buf: [1; WIDTH * HEIGHT],
-            window: Some(Window::new(
-                "Test",
-                WIDTH,
-                HEIGHT,
-                woptions,
-            ).unwrap_or_else(|e| {
+            window: Some(create_window("image", Default::default()).unwrap_or_else(|e| {
                 panic!("{}", e);
             })),
         }
@@ -83,15 +76,10 @@ impl Display {
         return vf;
      }
 
-    // Right now, just print everything to the console.
-    // We keep the actual printing separate from the update logic so that
-    // it is easier to write unit tests for the logic.
-    //
-    // TODO: print to an actual framebuffer.
     fn update_display(&mut self) {
         if let Some(window) = &mut self.window {
-            window.update_with_buffer(&self.buf, WIDTH, HEIGHT)
-                .expect("Window update failed");
+            let image = ImageView::new(ImageInfo::mono8(WIDTH as u32, HEIGHT as u32), &self.buf);
+            window.set_image("image-001", image);
         }
     }
 }

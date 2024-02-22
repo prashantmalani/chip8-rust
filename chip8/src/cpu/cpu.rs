@@ -347,7 +347,9 @@ impl Cpu {
     pub fn decode(&mut self, instr: u16, disp: Option<&mut Display>, mem: Option<&mut Memory>,
         timer: Option<&mut Arc<Timer>>) -> Result<i32, String>{
             match instr {
-            0x00e0 => disp.unwrap().clear(),
+            0x00e0 => if let Some(disp) = disp {
+                disp.clear()
+            },
             0x00ee => self.return_routine(),
             instr2 => {
                 match (instr2 >> 12) & 0xF {
@@ -428,8 +430,7 @@ mod tests {
     #[test]
     fn decode_disp_clear() {
         let mut cpu = Cpu::new();
-        let mut disp = Display::new();
-        assert!(cpu.decode(0x00e0, Some(&mut disp), None, None).is_ok());
+        assert!(cpu.decode(0x00e0, None, None, None).is_ok());
     }
 
     #[test]

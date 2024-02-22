@@ -12,6 +12,7 @@ use display::display::Display;
 mod timer;
 use timer::timer::Timer;
 
+#[show_image::main]
 fn main() {
     let args: Vec<String> = env::args().collect();
     
