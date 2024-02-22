@@ -339,16 +339,16 @@ impl Cpu {
         return (x, y, sprite);
     }
 
-    fn handle_draw(&mut self, instr: u16, mem: Option<&Memory>, disp: &mut Display) {
+    fn handle_draw(&mut self, instr: u16, mem: Option<&Memory>, disp: &Arc<Display>) {
         let (x, y, sprite) =self.get_sprite(instr, mem.unwrap());
-        self.v[0xf] = disp.draw(x, y, &sprite);
+        self.v[0xf] = Display::draw(disp, x, y, &sprite);
     }
 
-    pub fn decode(&mut self, instr: u16, disp: Option<&mut Display>, mem: Option<&mut Memory>,
+    pub fn decode(&mut self, instr: u16, disp: Option<&Arc<Display>>, mem: Option<&mut Memory>,
         timer: Option<&mut Arc<Timer>>) -> Result<i32, String>{
             match instr {
             0x00e0 => if let Some(disp) = disp {
-                disp.clear()
+                Display::clear(disp);
             },
             0x00ee => self.return_routine(),
             instr2 => {
