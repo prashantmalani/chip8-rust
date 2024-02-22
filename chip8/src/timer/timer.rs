@@ -44,7 +44,6 @@ impl Timer {
         loop {
             Timer::one_iteration(&timer.delay);
             thread::sleep(Duration::from_micros(16666));
-            println!{"Iteration"};
         }
     }
 }
