@@ -32,13 +32,13 @@ fn main() {
 
     println!("Read in program of size: {} bytes", program.len()); 
 
-    let mut mem = Memory{mem: [0; 4096]}; 
+    let mut mem = Memory::new();
     match mem.load_program(&program) {
         Err(e) => println!("Load failed: {}", e),
         _ => {},
     }
 
-    let mut disp = Display::new();
+    let disp = Display::new();
 
     let mut cpu = Cpu::new();
 
@@ -53,7 +53,7 @@ fn main() {
             },
         };
 
-        let decode = match cpu.decode(instr, Some(&disp), Some(&mut mem), Some(&mut timers)) {
+        match cpu.decode(instr, Some(&disp), Some(&mut mem), Some(&mut timers)) {
             Err(e) => {
                 println!("Decode failed: {}", e);
                 break;
