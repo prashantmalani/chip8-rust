@@ -1,6 +1,6 @@
 use std::{sync::{Arc, Mutex, mpsc::{self, Sender}}, thread, time::Duration};
 
-use show_image::{ImageView, ImageInfo, create_window, WindowProxy};
+use show_image::{ImageView, ImageInfo, create_window, WindowProxy, event::KeyboardInput};
 
 pub const WIDTH: usize = 64;
 pub const HEIGHT: usize = 32;
@@ -49,17 +49,24 @@ impl Display {
                         )) {
                             eprintln!("Failed to set image: {}", err);
                         }
+
+                        for event in window.event_channel() {
+                            match event.recv() {
+                                Ok(wevent) => {
+                                    match wevent {
+                                        show_image::event::WindowEvent::KeyboardInput(kb_input) => {
+                                            println!("Received KB event: {}, state: {:?}", kb_input.input.scan_code, kb_input.input.state);
+                                        },
+                                        _ => {},
+                                    }
+                                }
+                                Err(e) => println!("Error receiving window event: {}", e),
+                            }
+                        }
                     }
                 }
             }
 
-
-/*
-
-            for event in disp.window.unwrap().as_mut().unwrap().event_channel() {
-                // ... event handling
-            }
-*/
             thread::sleep(Duration::from_micros(16666));
         }
     }
