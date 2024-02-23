@@ -129,8 +129,7 @@ mod tests {
 
     #[test]
     fn check_clear_buf() {
-        let disp = Display{buf: Mutex::new([1; WIDTH * HEIGHT]), window: None};
-        let disp_arc = Arc::new(disp);
+        let disp_arc = Arc::new(Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None});
         Display::clear_buf(&disp_arc.buf);
         for pxl in disp_arc.buf.lock().unwrap().iter() {
             assert_eq!(*pxl, 0);
@@ -139,8 +138,7 @@ mod tests {
 
     #[test]
     fn update_buf_sprite_normal() {
-        let disp = Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None};
-        let disp_arc = Arc::new(disp);
+        let disp_arc = Arc::new(Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None});
         // Use a sprite for the letter "F"
         let sprite = vec![0xF0, 0x80, 0xF0, 0x80, 0x80];
 
@@ -168,8 +166,7 @@ mod tests {
     #[test]
     // Test the sprite doesn't wrap around.
     fn update_buf_edge() {
-        let disp = Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None};
-        let disp_arc = Arc::new(disp);
+        let disp_arc = Arc::new(Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None});
         // Use a sprite for the letter "F"
         let sprite = vec![0xF0, 0x80, 0xF0, 0x80, 0x80];
 
@@ -206,8 +203,7 @@ mod tests {
     #[test]
     // Case where already on pixels are switched off by the sprite.
     fn update_buf_sprite_vf_check() {
-        let disp = Display{buf: Mutex::new([1; WIDTH * HEIGHT]), window: None};
-        let disp_arc = Arc::new(disp);
+        let disp_arc = Arc::new(Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None});
         // Use a sprite for the letter "F"
         let sprite = vec![0xF0, 0x80, 0xF0, 0x80, 0x80];
 
