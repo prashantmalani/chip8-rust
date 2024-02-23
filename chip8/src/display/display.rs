@@ -1,4 +1,4 @@
-use std::{sync::{Arc, Mutex, mpsc::{self, Sender}}, thread, time::Duration};
+use std::{sync::{Arc, Mutex}, thread, time::Duration};
 
 use show_image::{ImageView, ImageInfo, create_window, WindowProxy, event::KeyboardInput};
 
@@ -12,33 +12,27 @@ const OFF_PIXEL: u8 = 0x0;
 pub struct Display {
     buf: Mutex<[u8; WIDTH * HEIGHT]>,
     window: Option<Mutex<WindowProxy>>,
-    tx: Mutex<Sender<()>>,
 }
 
 impl Display {
     pub fn new() -> Arc<Display> {
-        let (tx, rx) = mpsc::channel();
-
         let mut disp = Arc::new(Display {
             buf: Mutex::new([1; WIDTH * HEIGHT]),
             window: Some(Mutex::new(create_window("image", Default::default()).unwrap_or_else(|e| {
                 panic!("{}", e);
             }))),
-            tx: Mutex::new(tx),
         });
-
-        let tx_clone = Arc::clone(&disp).tx.lock().unwrap().clone(); // Clone Sender inside Mutex
 
         let disp_clone = Arc::clone(&disp); // Create a clone of the Arc
 
         thread::spawn(move || {
-            Display::thread_loop(disp_clone, rx);
+            Display::thread_loop(disp_clone);
         });
 
         disp
     }
 
-    fn thread_loop(disp: Arc<Display>, rx: mpsc::Receiver<()>) {
+    fn thread_loop(disp: Arc<Display>) {
         loop {
             if let Some(window_mutex) = &disp.window {
                 if let Ok(mut window_lock) = window_mutex.lock() {
@@ -73,7 +67,6 @@ impl Display {
 
     pub fn clear(disp: &Arc<Display>) {
         Display::clear_buf(&disp.buf);
-        let tx = disp.tx.lock().unwrap();
     }
 
     fn clear_buf(buf:&Mutex<[u8; WIDTH * HEIGHT]>) {
@@ -85,7 +78,6 @@ impl Display {
 
     pub fn draw(disp: &Arc<Display>, x: u8, y: u8, sprite: &Vec<u8>) -> u8 {
         let vf = Display::update_buf_sprite(&disp.buf, x, y, sprite);
-        let tx = disp.tx.lock().unwrap();
 
         return vf;
     }
@@ -136,8 +128,7 @@ mod tests {
 
     #[test]
     fn check_clear_buf() {
-        let (tx, rx) = mpsc::channel();
-        let mut disp = Display{buf: Mutex::new([1; WIDTH * HEIGHT]), window: None, tx: Mutex::new(tx)};
+        let mut disp = Display{buf: Mutex::new([1; WIDTH * HEIGHT]), window: None};
         let mut disp_arc = Arc::new(disp);
         Display::clear_buf(&disp_arc.buf);
         for pxl in disp_arc.buf.lock().unwrap().iter() {
@@ -147,8 +138,7 @@ mod tests {
 
     #[test]
     fn update_buf_sprite_normal() {
-        let (tx, rx) = mpsc::channel();
-        let mut disp = Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None, tx: Mutex::new(tx)};
+        let mut disp = Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None};
         let mut disp_arc = Arc::new(disp);
         // Use a sprite for the letter "F"
         let sprite = vec![0xF0, 0x80, 0xF0, 0x80, 0x80];
@@ -177,8 +167,7 @@ mod tests {
     #[test]
     // Test the sprite doesn't wrap around.
     fn update_buf_edge() {
-        let (tx, rx) = mpsc::channel();
-        let mut disp = Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None, tx: Mutex::new(tx)};
+        let mut disp = Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None};
         let mut disp_arc = Arc::new(disp);
         // Use a sprite for the letter "F"
         let sprite = vec![0xF0, 0x80, 0xF0, 0x80, 0x80];
@@ -216,8 +205,7 @@ mod tests {
     #[test]
     // Case where already on pixels are switched off by the sprite.
     fn update_buf_sprite_vf_check() {
-        let (tx, rx) = mpsc::channel();
-        let mut disp = Display{buf: Mutex::new([1; WIDTH * HEIGHT]), window: None, tx: Mutex::new(tx)};
+        let mut disp = Display{buf: Mutex::new([1; WIDTH * HEIGHT]), window: None};
         let mut disp_arc = Arc::new(disp);
         // Use a sprite for the letter "F"
         let sprite = vec![0xF0, 0x80, 0xF0, 0x80, 0x80];
