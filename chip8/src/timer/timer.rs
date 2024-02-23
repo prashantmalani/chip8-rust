@@ -13,7 +13,7 @@ impl Timer {
             delay: Mutex::new(0),
         });
 
-        if (!for_test) {
+        if !for_test {
             let timer_clone = Arc::clone(&timer);
             thread::spawn(move || {
                 Timer::thread_loop(timer_clone);
