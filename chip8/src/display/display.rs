@@ -8,6 +8,8 @@ pub const HEIGHT: usize = 32;
 const ON_PIXEL: u8 = 0xFF;
 const OFF_PIXEL: u8 = 0x0;
 
+const THREAD_LOOP_SLEEP_US: u64 = 16666;
+
 // We implement the display using a linear vector of 32 bit values.
 pub struct Display {
     buf: Mutex<[u8; WIDTH * HEIGHT]>,
@@ -60,7 +62,7 @@ impl Display {
                 }
             }
 
-            thread::sleep(Duration::from_micros(16666));
+            thread::sleep(Duration::from_micros(THREAD_LOOP_SLEEP_US));
         }
     }
 
