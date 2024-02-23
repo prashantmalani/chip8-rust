@@ -125,7 +125,7 @@ impl Cpu {
 
         let vx = self.v[x_ind as usize];
         let vy = self.v[y_ind as usize];
-        let mut result: u8;
+  
         if vx > vy {
             self.v[0xF] = 1;
         } else {
@@ -142,7 +142,7 @@ impl Cpu {
 
         let vx = self.v[x_ind as usize];
         let vy = self.v[y_ind as usize];
-        let mut result: u8;
+
         if vy > vx {
             self.v[0xF] = 1;
         } else {
@@ -185,7 +185,7 @@ impl Cpu {
 
     fn left_shift(&mut self, instr: u16) {
         let x_ind = (instr >> 8) & 0xF;
-        let y_ind = (instr >> 4) & 0xF;
+        let _y_ind = (instr >> 4) & 0xF;
 
         // TODO: Add a config to control this behavior
         //self.v[x_ind as usize] = self.v[y_ind as usize];
@@ -202,7 +202,7 @@ impl Cpu {
 
     fn right_shift(&mut self, instr: u16) {
         let x_ind = (instr >> 8) & 0xF;
-        let y_ind = (instr >> 4) & 0xF;
+        let _y_ind = (instr >> 4) & 0xF;
 
         // TODO: Add a config to control this behavior
         //self.v[x_ind as usize] = self.v[y_ind as usize];
@@ -383,8 +383,6 @@ impl Cpu {
 
 #[cfg(test)]
 mod tests {
-    use crate::display::display::Display;
-
     use super::{Memory, Cpu, PROGRAM_ADDRESS};
 
     #[test]
@@ -551,7 +549,7 @@ mod tests {
         const X: u8 = 0x2;
         const Y: u8 = 0x3;
         const VAL: u8 = 0x45;
-        let instr = ((0x5 << 12) | (X as u16 ) << 8 | (Y as u16) << 4);
+        let instr = (0x5 << 12) | (X as u16 ) << 8 | (Y as u16) << 4;
         const ORIG_PC: u16 = 0x500;
         cpu.pc = ORIG_PC;
         cpu.v[X as usize] = VAL;
@@ -792,7 +790,6 @@ mod tests {
     #[test]
     fn increment_i() {
         let mut cpu = Cpu::new();
-        let mut mem = Memory { mem: [0; 4096] } ;
 
         const I: usize = 0x500;
         const X: u8 = 0x4;
