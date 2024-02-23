@@ -1,6 +1,6 @@
 use std::{sync::{Arc, Mutex}, thread, time::Duration};
 
-use show_image::{ImageView, ImageInfo, create_window, WindowProxy, event::KeyboardInput};
+use show_image::{ImageView, ImageInfo, create_window, WindowProxy};
 
 pub const WIDTH: usize = 64;
 pub const HEIGHT: usize = 32;
@@ -16,7 +16,7 @@ pub struct Display {
 
 impl Display {
     pub fn new() -> Arc<Display> {
-        let mut disp = Arc::new(Display {
+        let disp = Arc::new(Display {
             buf: Mutex::new([1; WIDTH * HEIGHT]),
             window: Some(Mutex::new(create_window("image", Default::default()).unwrap_or_else(|e| {
                 panic!("{}", e);
@@ -71,7 +71,7 @@ impl Display {
 
     fn clear_buf(buf:&Mutex<[u8; WIDTH * HEIGHT]>) {
         let mut buf_unlocked = buf.lock().unwrap();
-        for mut pxl in buf_unlocked.iter_mut() {
+        for pxl in buf_unlocked.iter_mut() {
             *pxl = 0;
         }
     }
@@ -94,7 +94,7 @@ impl Display {
                 break;
             }
 
-            for x_ind in {0..8} {
+            for x_ind in 0..8 {
                 let cur_x = x + x_ind;
                 // Stop if we've reached the edge.
                 if cur_x == (WIDTH as u8) {
@@ -122,14 +122,14 @@ impl Display {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{Arc, Mutex, mpsc};
+    use std::sync::{Arc, Mutex};
 
     use super::{Display, WIDTH, HEIGHT, ON_PIXEL, OFF_PIXEL};
 
     #[test]
     fn check_clear_buf() {
-        let mut disp = Display{buf: Mutex::new([1; WIDTH * HEIGHT]), window: None};
-        let mut disp_arc = Arc::new(disp);
+        let disp = Display{buf: Mutex::new([1; WIDTH * HEIGHT]), window: None};
+        let disp_arc = Arc::new(disp);
         Display::clear_buf(&disp_arc.buf);
         for pxl in disp_arc.buf.lock().unwrap().iter() {
             assert_eq!(*pxl, 0);
@@ -138,8 +138,8 @@ mod tests {
 
     #[test]
     fn update_buf_sprite_normal() {
-        let mut disp = Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None};
-        let mut disp_arc = Arc::new(disp);
+        let disp = Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None};
+        let disp_arc = Arc::new(disp);
         // Use a sprite for the letter "F"
         let sprite = vec![0xF0, 0x80, 0xF0, 0x80, 0x80];
 
@@ -167,8 +167,8 @@ mod tests {
     #[test]
     // Test the sprite doesn't wrap around.
     fn update_buf_edge() {
-        let mut disp = Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None};
-        let mut disp_arc = Arc::new(disp);
+        let disp = Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None};
+        let disp_arc = Arc::new(disp);
         // Use a sprite for the letter "F"
         let sprite = vec![0xF0, 0x80, 0xF0, 0x80, 0x80];
 
@@ -205,8 +205,8 @@ mod tests {
     #[test]
     // Case where already on pixels are switched off by the sprite.
     fn update_buf_sprite_vf_check() {
-        let mut disp = Display{buf: Mutex::new([1; WIDTH * HEIGHT]), window: None};
-        let mut disp_arc = Arc::new(disp);
+        let disp = Display{buf: Mutex::new([1; WIDTH * HEIGHT]), window: None};
+        let disp_arc = Arc::new(disp);
         // Use a sprite for the letter "F"
         let sprite = vec![0xF0, 0x80, 0xF0, 0x80, 0x80];
 
@@ -227,9 +227,9 @@ mod tests {
         assert_eq!(vf, 1);
 
         // All the pixels should be switched off.
-        for (j, byte) in sprite.iter().enumerate() {
+        for (j, _) in sprite.iter().enumerate() {
             let cur_y = y as usize + j;
-            for i in 0..8 {
+            for _ in 0..8 {
                 let buf_ind: usize = (WIDTH * cur_y) + (x + 1) as usize;
                 assert_eq!(disp_arc.buf.lock().unwrap()[buf_ind], OFF_PIXEL)
             }
