@@ -36,26 +36,25 @@ impl Display {
         loop {
             if let Some(window_mutex) = &disp.window {
                 if let Ok(mut window_lock) = window_mutex.lock() {
-                    if let window = &mut *window_lock {
-                        if let Err(err) = window.set_image("image", ImageView::new(
-                            ImageInfo::mono8(WIDTH as u32, HEIGHT as u32),
-                            &*disp.buf.lock().unwrap(),
-                        )) {
-                            eprintln!("Failed to set image: {}", err);
-                        }
+                    let window = &mut *window_lock;
+                    if let Err(err) = window.set_image("image", ImageView::new(
+                        ImageInfo::mono8(WIDTH as u32, HEIGHT as u32),
+                        &*disp.buf.lock().unwrap(),
+                    )) {
+                        eprintln!("Failed to set image: {}", err);
+                    }
 
-                        for event in window.event_channel() {
-                            match event.recv() {
-                                Ok(wevent) => {
-                                    match wevent {
-                                        show_image::event::WindowEvent::KeyboardInput(kb_input) => {
-                                            println!("Received KB event: {}, state: {:?}", kb_input.input.scan_code, kb_input.input.state);
-                                        },
-                                        _ => {},
-                                    }
+                    for event in window.event_channel() {
+                        match event.recv() {
+                            Ok(wevent) => {
+                                match wevent {
+                                    show_image::event::WindowEvent::KeyboardInput(kb_input) => {
+                                        println!("Received KB event: {}, state: {:?}", kb_input.input.scan_code, kb_input.input.state);
+                                    },
+                                    _ => {},
                                 }
-                                Err(e) => println!("Error receiving window event: {}", e),
                             }
+                            Err(e) => println!("Error receiving window event: {}", e),
                         }
                     }
                 }
