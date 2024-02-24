@@ -1,6 +1,6 @@
-use std::{sync::{Arc, Mutex}, thread, time::Duration};
+use std::{sync::{Arc, Mutex}, thread, time::Duration, collections::HashMap};
 
-use show_image::{ImageView, ImageInfo, create_window, WindowProxy};
+use show_image::{ImageView, ImageInfo, create_window, WindowProxy, event::ElementState};
 
 pub const WIDTH: usize = 64;
 pub const HEIGHT: usize = 32;
@@ -14,6 +14,8 @@ const THREAD_LOOP_SLEEP_US: u64 = 16666;
 pub struct Display {
     buf: Mutex<[u8; WIDTH * HEIGHT]>,
     window: Option<Mutex<WindowProxy>>,
+    // Maintain state whether the key is currently pressed or not.
+    keys_state: Mutex<HashMap<u8, bool>>,
 }
 
 impl Display {
@@ -23,6 +25,7 @@ impl Display {
             window: Some(Mutex::new(create_window("image", Default::default()).unwrap_or_else(|e| {
                 panic!("{}", e);
             }))),
+            keys_state: Mutex::new(HashMap::new()),
         });
 
         let disp_clone = Arc::clone(&disp); // Create a clone of the Arc
@@ -32,6 +35,71 @@ impl Display {
         });
 
         disp
+    }
+
+    fn scancode_to_key(scancode: u32) -> Result<u8, String> {
+        match scancode {
+            2 => return Ok(0x1),
+            3 => return Ok(0x2),
+            4 => return Ok(0x3),
+            5 => return Ok(0xC),
+            16 => return Ok(0x4),
+            17 => return Ok(0x5),
+            18 => return Ok(0x6),
+            19 => return Ok(0xD),
+            30 => return Ok(0x7),
+            31 => return Ok(0x8),
+            32 => return Ok(0x9),
+            33 => return Ok(0xE),
+            44 => return Ok(0xA),
+            45 => return Ok(0x0),
+            46 => return Ok(0xB),
+            47 => return Ok(0xF),
+            _ => return Err(format!("Invalid keypress: {}", scancode)),
+        }
+    }
+
+    fn set_key_state(disp: &Arc<Display>, scan_code: u32, state: ElementState) -> Result<i32, String> {
+        let key_code = Display::scancode_to_key(scan_code)?;
+
+        let mut keys_state = disp.keys_state.lock().unwrap();
+        match state {
+            ElementState::Pressed => { keys_state.insert(key_code, true); },
+            ElementState::Released => { keys_state.insert(key_code, false); },
+        }
+
+        return Ok(0);
+    }
+
+    pub fn get_key_state(disp: &Arc<Display>, key: u8) -> Result<bool, String> {
+        if key > 0xF {
+            return Err(format!("Invalid key provided: {}", key));
+        } else {
+            let keys_state = disp.keys_state.lock().unwrap();
+            match keys_state.get(&key) {
+                Some(val) => return Ok(*val),
+                None => return Ok(false),
+            }
+        }
+    }
+
+    fn handle_window_events(disp: &Arc<Display>, window: &mut WindowProxy) {
+        for event in window.event_channel() {
+            match event.recv() {
+                Ok(wevent) => {
+                    match wevent {
+                        show_image::event::WindowEvent::KeyboardInput(kb_input) => {
+                            match Display::set_key_state(disp, kb_input.input.scan_code, kb_input.input.state) {
+                                Err(e) => eprintln!("Set key state failed: {}", e),
+                                _ => {},
+                            }
+                        },
+                        _ => {},
+                    }
+                }
+                Err(e) => println!("Error receiving window event: {}", e),
+            }
+        }
     }
 
     fn thread_loop(disp: Arc<Display>) {
@@ -46,19 +114,7 @@ impl Display {
                         eprintln!("Failed to set image: {}", err);
                     }
 
-                    for event in window.event_channel() {
-                        match event.recv() {
-                            Ok(wevent) => {
-                                match wevent {
-                                    show_image::event::WindowEvent::KeyboardInput(kb_input) => {
-                                        println!("Received KB event: {}, state: {:?}", kb_input.input.scan_code, kb_input.input.state);
-                                    },
-                                    _ => {},
-                                }
-                            }
-                            Err(e) => println!("Error receiving window event: {}", e),
-                        }
-                    }
+                    Display::handle_window_events(&disp, window);
                 }
             }
 
@@ -123,13 +179,13 @@ impl Display {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{Arc, Mutex};
+    use std::{sync::{Arc, Mutex}, collections::HashMap};
 
     use super::{Display, WIDTH, HEIGHT, ON_PIXEL, OFF_PIXEL};
 
     #[test]
     fn check_clear_buf() {
-        let disp_arc = Arc::new(Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None});
+        let disp_arc = Arc::new(Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None, keys_state: Mutex::new(HashMap::new())});
         Display::clear_buf(&disp_arc.buf);
         for pxl in disp_arc.buf.lock().unwrap().iter() {
             assert_eq!(*pxl, 0);
@@ -138,7 +194,7 @@ mod tests {
 
     #[test]
     fn update_buf_sprite_normal() {
-        let disp_arc = Arc::new(Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None});
+        let disp_arc = Arc::new(Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None, keys_state: Mutex::new(HashMap::new())});
         // Use a sprite for the letter "F"
         let sprite = vec![0xF0, 0x80, 0xF0, 0x80, 0x80];
 
@@ -166,7 +222,7 @@ mod tests {
     #[test]
     // Test the sprite doesn't wrap around.
     fn update_buf_edge() {
-        let disp_arc = Arc::new(Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None});
+        let disp_arc = Arc::new(Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None, keys_state: Mutex::new(HashMap::new())});
         // Use a sprite for the letter "F"
         let sprite = vec![0xF0, 0x80, 0xF0, 0x80, 0x80];
 
@@ -203,7 +259,7 @@ mod tests {
     #[test]
     // Case where already on pixels are switched off by the sprite.
     fn update_buf_sprite_vf_check() {
-        let disp_arc = Arc::new(Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None});
+        let disp_arc = Arc::new(Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None, keys_state: Mutex::new(HashMap::new())});
         // Use a sprite for the letter "F"
         let sprite = vec![0xF0, 0x80, 0xF0, 0x80, 0x80];
 
@@ -231,5 +287,10 @@ mod tests {
                 assert_eq!(disp_arc.buf.lock().unwrap()[buf_ind], OFF_PIXEL)
             }
         }
+    }
+
+    #[test]
+    fn key_state() {
+        let disp_arc = Arc::new(Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None, keys_state: Mutex::new(HashMap::new())});
     }
 }
