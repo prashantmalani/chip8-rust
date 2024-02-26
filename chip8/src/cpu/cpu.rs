@@ -312,6 +312,41 @@ impl Cpu {
         return Ok(0);
     }
 
+    fn key_pressed(&mut self, instr: u16, disp: &Arc<Display>) -> Result<i32, String> {
+        let x_ind = instr >> 8 & 0xF;
+        let vx = self.v[x_ind as usize];
+
+        let key_state = Display::get_key_state(disp, vx)?;
+
+        if key_state == true {
+            self.pc += 2;
+        }
+
+        return Ok(0);
+    }
+
+    fn key_not_pressed(&mut self, instr: u16, disp: &Arc<Display>) -> Result<i32, String> {
+        let x_ind = instr >> 8 & 0xF;
+        let vx = self.v[x_ind as usize];
+
+        let key_state = Display::get_key_state(disp, vx)?;
+
+        if key_state == false {
+            self.pc += 2;
+        }
+
+        return Ok(0);
+    }
+
+    fn handle_e_instructions(&mut self, instr: u16, disp: &Arc<Display>) -> Result<i32, String> {
+        match instr & 0xFF {
+            0x9E => { self.key_pressed(instr, disp)?; },
+            0xA1 => { self.key_not_pressed(instr, disp)?; },
+            _ => return Err(format!("Unhandled instruction: 0x{:X}", instr)),
+        }
+        return Ok(0);
+    }
+
     /*
        Decodes the draw instruction: DXYN
 
@@ -365,6 +400,9 @@ impl Cpu {
                         return Err(e);
                     },
                     0xD => self.handle_draw(instr2, Some(&*mem.unwrap()), &mut disp.unwrap()),
+                    0xE => if let Some(disp) =  disp {
+                        self.handle_e_instructions(instr, disp)?;
+                    },
                     0xF => if let Err(e) = self.handle_f_instructions(instr2, mem, timer) {
                         return Err(e);
                     }
