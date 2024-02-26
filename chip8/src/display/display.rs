@@ -186,7 +186,7 @@ impl Display {
 
 #[cfg(test)]
 mod tests {
-    use std::{sync::{Arc, Mutex}, collections::HashMap};
+    use show_image::event::ElementState;
 
     use super::{Display, WIDTH, HEIGHT, ON_PIXEL, OFF_PIXEL};
 
@@ -299,5 +299,26 @@ mod tests {
     #[test]
     fn key_state() {
         let disp_arc = Display::new(true);
+
+        // Press a key.
+        assert!(Display::set_key_state(&disp_arc, 2, ElementState::Pressed).is_ok());
+        assert_eq!(Display::get_key_state(&disp_arc, 1).unwrap(), true);
+
+        // Gets pressed again.
+        assert!(Display::set_key_state(&disp_arc, 2, ElementState::Pressed).is_ok());
+        assert_eq!(Display::get_key_state(&disp_arc, 1).unwrap(), true);
+
+        // Release the key.
+        assert!(Display::set_key_state(&disp_arc, 2, ElementState::Released).is_ok());
+        assert_eq!(Display::get_key_state(&disp_arc, 1).unwrap(), false);
+
+        // Press a invalid key
+        assert!(Display::set_key_state(&disp_arc, 93, ElementState::Pressed).is_err());
+
+        // Press two keys consecutively without releasing them, then make sure the first
+        // one is still reporting as pressed.
+        assert!(Display::set_key_state(&disp_arc, 2, ElementState::Pressed).is_ok());
+        assert!(Display::set_key_state(&disp_arc, 3, ElementState::Pressed).is_ok());
+        assert_eq!(Display::get_key_state(&disp_arc, 2).unwrap(), true);
     }
 }
