@@ -94,6 +94,7 @@ impl Display {
                                 _ => {},
                             }
                         },
+                        show_image::event::WindowEvent::CloseRequested(_) => std::process::exit(0),
                         _ => {},
                     }
                 }
