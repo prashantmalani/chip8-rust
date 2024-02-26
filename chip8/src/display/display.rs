@@ -19,20 +19,26 @@ pub struct Display {
 }
 
 impl Display {
-    pub fn new() -> Arc<Display> {
+    pub fn new(for_test: bool) -> Arc<Display> {
         let disp = Arc::new(Display {
-            buf: Mutex::new([1; WIDTH * HEIGHT]),
-            window: Some(Mutex::new(create_window("image", Default::default()).unwrap_or_else(|e| {
-                panic!("{}", e);
-            }))),
+            buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]),
+            window: if !for_test {
+                    Some(Mutex::new(create_window("image", Default::default())
+                                    .unwrap_or_else(|e| {
+                    panic!("{}", e);})))
+                } else {
+                    None
+                },
             keys_state: Mutex::new(HashMap::new()),
         });
 
         let disp_clone = Arc::clone(&disp); // Create a clone of the Arc
 
-        thread::spawn(move || {
-            Display::thread_loop(disp_clone);
-        });
+        if !for_test {
+            thread::spawn(move || {
+                Display::thread_loop(disp_clone);
+            });
+        }
 
         disp
     }
@@ -186,7 +192,7 @@ mod tests {
 
     #[test]
     fn check_clear_buf() {
-        let disp_arc = Arc::new(Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None, keys_state: Mutex::new(HashMap::new())});
+        let disp_arc = Display::new(true);
         Display::clear_buf(&disp_arc.buf);
         for pxl in disp_arc.buf.lock().unwrap().iter() {
             assert_eq!(*pxl, 0);
@@ -195,7 +201,7 @@ mod tests {
 
     #[test]
     fn update_buf_sprite_normal() {
-        let disp_arc = Arc::new(Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None, keys_state: Mutex::new(HashMap::new())});
+        let disp_arc = Display::new(true);
         // Use a sprite for the letter "F"
         let sprite = vec![0xF0, 0x80, 0xF0, 0x80, 0x80];
 
@@ -223,7 +229,7 @@ mod tests {
     #[test]
     // Test the sprite doesn't wrap around.
     fn update_buf_edge() {
-        let disp_arc = Arc::new(Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None, keys_state: Mutex::new(HashMap::new())});
+        let disp_arc = Display::new(true);
         // Use a sprite for the letter "F"
         let sprite = vec![0xF0, 0x80, 0xF0, 0x80, 0x80];
 
@@ -260,7 +266,7 @@ mod tests {
     #[test]
     // Case where already on pixels are switched off by the sprite.
     fn update_buf_sprite_vf_check() {
-        let disp_arc = Arc::new(Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None, keys_state: Mutex::new(HashMap::new())});
+        let disp_arc = Display::new(true);
         // Use a sprite for the letter "F"
         let sprite = vec![0xF0, 0x80, 0xF0, 0x80, 0x80];
 
@@ -292,6 +298,6 @@ mod tests {
 
     #[test]
     fn key_state() {
-        let disp_arc = Arc::new(Display{buf: Mutex::new([OFF_PIXEL; WIDTH * HEIGHT]), window: None, keys_state: Mutex::new(HashMap::new())});
+        let disp_arc = Display::new(true);
     }
 }

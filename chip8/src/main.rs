@@ -38,7 +38,7 @@ fn main() {
         _ => {},
     }
 
-    let disp = Display::new();
+    let disp = Display::new(false);
 
     let mut cpu = Cpu::new();
 
