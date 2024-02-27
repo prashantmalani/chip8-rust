@@ -1,4 +1,4 @@
-use std::{collections::LinkedList, sync::Arc};
+use std::{collections::{LinkedList, HashMap}, sync::Arc};
 
 use crate::{mem::mem::Memory, display::display::{Display, WIDTH, HEIGHT}, timer::timer::Timer};
 
@@ -6,7 +6,8 @@ pub struct Cpu {
     pc: u16, // program counter
     i: u16, // index register
     v: [u8; 16], // V0-VF
-    stack: LinkedList<u16> // Stack
+    stack: LinkedList<u16>, // Stack
+    pressed: HashMap<u8, bool>, // Keep track of pressed keys for "Get Key" instruction.
 }
 
 const PROGRAM_ADDRESS: u16 = 0x200;
@@ -18,7 +19,7 @@ impl Cpu {
             i: 0x0,
             v: [0; 16],
             stack: LinkedList::new(),
-
+            pressed: HashMap::new(),
         }
     }
 
@@ -306,9 +307,48 @@ impl Cpu {
         self.v[x_ind as usize] = val;
     }
 
+    fn get_new_key_pressed_state(disp: &Arc<Display>) -> HashMap<u8, bool> {
+        let mut new_pressed: HashMap<u8, bool> = HashMap::new();
+        for key in 0..=0xF {
+            match Display::get_key_state(disp, key) {
+                Ok(val) => {
+                    new_pressed.insert(key, val);
+                }
+                Err(e) => panic!("Attempted to get key state for {}: {}", key, e),
+            }
+        }
+
+        return new_pressed;
+    }
+
+    fn check_key_state(&mut self, new_pressed: HashMap<u8, bool>, instr: u16) {
+        for (k, v) in self.pressed.iter() {
+            // Found a pressed key which was then released.
+            if *v == true && *(new_pressed.get(k).unwrap()) == false {
+                let x_ind = instr >> 8 & 0xF;
+                self.v[x_ind as usize] = *k;
+                self.pressed.clear();
+                return;
+            }
+        }
+
+        self.pressed = new_pressed;
+        self.pc -= 2;
+    }
+
+    // The only way to reasonably achieve this, is to get the entire keypad
+    // state each time this is called, and then compare it with the previous state.
+    // If any key which was pressed is now not pressed, we register that as a keypress.
+    fn get_key(&mut self, instr: u16, disp: &Arc<Display>) {
+        let new_pressed = Cpu::get_new_key_pressed_state(disp);
+
+        self.check_key_state(new_pressed, instr);
+    }
+
     fn handle_f_instructions(&mut self, instr: u16, mem: Option<&mut Memory>,
-        timer: Option<&mut Arc<Timer>>) -> Result<i32, String> {
+        timer: Option<&mut Arc<Timer>>, disp: Option<&Arc<Display>>) -> Result<i32, String> {
         match instr & 0xFF {
+            0x0A => self.get_key(instr, disp.unwrap()),
             0x07 => self.get_delay(instr, &*timer.unwrap()),
             0x15 => self.set_delay(instr, timer.unwrap()),
             0x1E => self.increment_i(instr),
@@ -412,7 +452,7 @@ impl Cpu {
                     0xE => if let Some(disp) =  disp {
                         self.handle_e_instructions(instr, disp)?;
                     },
-                    0xF => if let Err(e) = self.handle_f_instructions(instr2, mem, timer) {
+                    0xF => if let Err(e) = self.handle_f_instructions(instr2, mem, timer, disp) {
                         return Err(e);
                     }
                     _ => {
@@ -430,6 +470,8 @@ impl Cpu {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use super::{Memory, Cpu, PROGRAM_ADDRESS};
 
     #[test]
@@ -869,6 +911,32 @@ mod tests {
 
         assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.i, (I + VAL as usize) as u16);
+    }
+
+    #[test]
+    fn check_key_state() {
+        let mut cpu = Cpu::new();
+        const X: u8 = 0x4;
+        let instr = 0xF << 12 | (X as u16) << 8 | 0x0A;
+
+        let mut pressed = HashMap::new();
+        // Update a key stroke.
+        pressed.insert(0xA, true);
+        cpu.check_key_state(pressed.clone(), instr);
+
+        assert_eq!(cpu.v[X as usize], 0);
+
+        // Press another key but don't release the first one.
+        pressed.insert(0xB, true);
+        cpu.check_key_state(pressed.clone(), instr);
+
+        assert_eq!(cpu.v[X as usize], 0);
+
+        // Release the first key.
+        pressed.insert(0xA, false);
+        cpu.check_key_state(pressed.clone(), instr);
+
+        assert_eq!(cpu.v[X as usize], 0xA);
     }
 
     #[test]
