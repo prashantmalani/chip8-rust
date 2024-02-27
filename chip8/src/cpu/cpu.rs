@@ -111,6 +111,15 @@ impl Cpu {
         }
     }
 
+    fn skip_vx_vy_not_equal(&mut self, instr: u16) {
+        let x = (instr >> 8) & 0xF;
+        let y = (instr >> 4) & 0xF;
+
+        if self.v[x as usize] != self.v[y as usize] {
+            self.pc = self.pc + 2;
+        }
+    }
+
     fn set_vx_to_vy(&mut self, instr: u16) {
         let x_ind = instr >> 8 & 0xF;
         let y_ind = instr >> 4 & 0xF;
@@ -317,7 +326,7 @@ impl Cpu {
         let vx = self.v[x_ind as usize];
 
         let key_state = Display::get_key_state(disp, vx)?;
-
+        println!("Pressed: Checking key:{:x}, value:{}", vx, key_state);
         if key_state == true {
             self.pc += 2;
         }
@@ -330,6 +339,7 @@ impl Cpu {
         let vx = self.v[x_ind as usize];
 
         let key_state = Display::get_key_state(disp, vx)?;
+        println!("Not Pressed: Checking key:{:x}, value:{}", vx, key_state);
 
         if key_state == false {
             self.pc += 2;
@@ -393,6 +403,7 @@ impl Cpu {
                     0x3 => self.skip_vx_equal(instr2),
                     0x4 => self.skip_vx_ne(instr2),
                     0x5 => self.skip_vx_vy_equal(instr2),
+                    0x9 => self.skip_vx_vy_not_equal(instr2),
                     0xA => self.set_i(instr2),
                     0x6 => self.set_v(instr2),
                     0x7 => self.add_v(instr2),
@@ -460,7 +471,7 @@ mod tests {
     #[test]
     fn decode_invalid() {
         let mut cpu = Cpu::new();
-        assert!(cpu.decode(0x9000, None, None, None).is_err());
+        assert!(cpu.decode(0x8008, None, None, None).is_err());
     }
 
     #[test]
@@ -600,6 +611,27 @@ mod tests {
         cpu.v[X as usize] = VAL + 1;
         assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.pc, ORIG_PC);
+    }
+
+    #[test]
+    fn decode_skip_vx_vy_not_eq() {
+        let mut cpu = Cpu::new();
+        const X: u8 = 0x2;
+        const Y: u8 = 0x3;
+        const VAL: u8 = 0x45;
+        let instr = (0x9 << 12) | (X as u16 ) << 8 | (Y as u16) << 4;
+        const ORIG_PC: u16 = 0x500;
+        cpu.pc = ORIG_PC;
+        cpu.v[X as usize] = VAL;
+        cpu.v[Y as usize] = VAL;
+        assert!(cpu.decode(instr, None, None, None).is_ok());
+        assert_eq!(cpu.pc, ORIG_PC);
+
+        // Now change the VX value, so we can check the not-equal case.
+        cpu.pc = ORIG_PC;
+        cpu.v[X as usize] = VAL + 1;
+        assert!(cpu.decode(instr, None, None, None).is_ok());
+        assert_eq!(cpu.pc, ORIG_PC + 2);
     }
 
     #[test]
