@@ -326,7 +326,6 @@ impl Cpu {
         let vx = self.v[x_ind as usize];
 
         let key_state = Display::get_key_state(disp, vx)?;
-        println!("Pressed: Checking key:{:x}, value:{}", vx, key_state);
         if key_state == true {
             self.pc += 2;
         }
@@ -339,7 +338,6 @@ impl Cpu {
         let vx = self.v[x_ind as usize];
 
         let key_state = Display::get_key_state(disp, vx)?;
-        println!("Not Pressed: Checking key:{:x}, value:{}", vx, key_state);
 
         if key_state == false {
             self.pc += 2;
