@@ -422,6 +422,14 @@ impl Cpu {
         return (x, y, sprite);
     }
 
+    fn random(&mut self, instr: u16) {
+        let x_ind = instr >> 8 & 0xF;
+        let nn: u8 = (instr & 0xFF) as u8;
+
+        let random_num = rand::random::<u8>();
+        self.v[x_ind as usize] = random_num & nn;
+    }
+
     fn handle_draw(&mut self, instr: u16, mem: Option<&Memory>, disp: &Arc<Display>) {
         let (x, y, sprite) =self.get_sprite(instr, mem.unwrap());
         self.v[0xf] = Display::draw(disp, x, y, &sprite);
@@ -448,6 +456,7 @@ impl Cpu {
                     0x8 => if let Err(e) = self.handle_logic_arith(instr2) {
                         return Err(e);
                     },
+                    0xC => self.random(instr2),
                     0xD => self.handle_draw(instr2, Some(&*mem.unwrap()), &mut disp.unwrap()),
                     0xE => if let Some(disp) =  disp {
                         self.handle_e_instructions(instr, disp)?;
