@@ -146,6 +146,24 @@ impl Cpu {
         self.v[x_ind as usize] = result;
     }
 
+    fn arith_vx_plus_vy(&mut self, instr: u16) {
+        let x_ind = (instr >> 8) & 0xF;
+        let y_ind = (instr >> 4) & 0xF;
+
+        let vx = self.v[x_ind as usize];
+        let vy = self.v[y_ind as usize];
+
+        let result: u16 = vx as u16 + vy as u16;
+        if result > 255 {
+            self.v[0xF] = 1;
+        } else {
+            self.v[0xF] = 0;
+        }
+
+        let result = vx.wrapping_add(vy);
+        self.v[x_ind as usize] = result;
+    }
+
     fn arith_vy_minus_vx(&mut self, instr: u16) {
         let x_ind = (instr >> 8) & 0xF;
         let y_ind = (instr >> 4) & 0xF;
@@ -236,6 +254,7 @@ impl Cpu {
             1 => self.logic_vx_or_vy(instr),
             2 => self.logic_vx_and_vy(instr),
             3 => self.logic_vx_xor_vy(instr),
+            4 => self.arith_vx_plus_vy(instr),
             0xE => self.left_shift(instr),
             _ => return Err(String::from("Unhandled instruction: 0x") + format!("{:X}", &instr).as_str()),
         }
@@ -719,6 +738,28 @@ mod tests {
         assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.v[X as usize], VAL2.wrapping_sub(VAL1));
         assert_eq!(cpu.v[0xF], 0);
+    }
+
+    #[test]
+    fn decode_arith_vx_plus_vy() {
+        let mut cpu = Cpu::new();
+        const X: u8 = 0x2;
+        const Y: u8 = 0x3;
+        const VAL1: u8 = 0x50;
+        const VAL2: u8 = 0x45;
+        let instr = ((0x8 << 12) | (X as u16 ) << 8 | (Y as u16) << 4) | 0x4;
+
+        cpu.v[X as usize] = VAL1 as u8;
+        cpu.v[Y as usize] = VAL2 as u8;
+        assert!(cpu.decode(instr, None, None, None).is_ok());
+        assert_eq!(cpu.v[X as usize], VAL1 + VAL2);
+        assert_eq!(cpu.v[0xF], 0);
+
+        cpu.v[X as usize] = 0xFF;
+        cpu.v[Y as usize] = VAL2;
+        assert!(cpu.decode(instr, None, None, None).is_ok());
+        assert_eq!(cpu.v[X as usize], VAL2-1);
+        assert_eq!(cpu.v[0xF], 1);
     }
 
     #[test]
