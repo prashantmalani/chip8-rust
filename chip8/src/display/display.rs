@@ -91,7 +91,7 @@ impl Display {
 
     fn handle_window_events(disp: &Arc<Display>, window: &mut WindowProxy) {
         for event in window.event_channel() {
-            match event.recv() {
+            match event.recv_timeout(Duration::from_micros(THREAD_LOOP_SLEEP_US)) {
                 Ok(wevent) => {
                     match wevent {
                         show_image::event::WindowEvent::KeyboardInput(kb_input) => {
@@ -104,7 +104,7 @@ impl Display {
                         _ => {},
                     }
                 }
-                Err(e) => println!("Error receiving window event: {}", e),
+                Err(_) => {},
             }
         }
     }
@@ -124,8 +124,6 @@ impl Display {
                     Display::handle_window_events(&disp, window);
                 }
             }
-
-            thread::sleep(Duration::from_micros(THREAD_LOOP_SLEEP_US));
         }
     }
 
