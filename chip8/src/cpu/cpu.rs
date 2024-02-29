@@ -320,6 +320,12 @@ impl Cpu {
         Timer::set_delay(timer, val);
     }
 
+    fn set_sound(&self, instr: u16, timer: &mut Arc<Timer>) {
+        let x_ind = (instr >> 8) & 0xF;
+        let val = self.v[x_ind as usize];
+        Timer::set_sound(timer, val);
+    }
+
     fn get_delay(&mut self, instr: u16, timer: &Arc<Timer>) {
         let x_ind = (instr >> 8) & 0xF;
         let val = Timer::get_delay(timer);
@@ -368,6 +374,7 @@ impl Cpu {
         timer: Option<&mut Arc<Timer>>, disp: Option<&Arc<Display>>) -> Result<i32, String> {
         match instr & 0xFF {
             0x0A => self.get_key(instr, disp.unwrap()),
+            0x18 => self.set_sound(instr, timer.unwrap()),
             0x07 => self.get_delay(instr, &*timer.unwrap()),
             0x15 => self.set_delay(instr, timer.unwrap()),
             0x1E => self.increment_i(instr),

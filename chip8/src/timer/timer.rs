@@ -5,12 +5,14 @@ use std::time::Duration;
 
 pub struct Timer {
     delay: Mutex<u8>,
+    sound: Mutex<u8>,
 }
 
 impl Timer {
     pub fn new(for_test: bool) -> Arc<Timer> {
         let timer = Arc::new(Timer {
             delay: Mutex::new(0),
+            sound: Mutex::new(0),
         });
 
         if !for_test {
@@ -33,16 +35,31 @@ impl Timer {
         return *delay;
     }
 
-    fn one_iteration(delay: &Mutex<u8>) {
+    pub fn set_sound(timer: &Arc<Timer>, val: u8) {
+        let mut sound = timer.sound.lock().unwrap();
+        *sound = val;
+    }
+
+    pub fn get_sound(timer: &Arc<Timer>) -> u8{
+        let sound = timer.sound.lock().unwrap();
+        return *sound;
+    }
+
+    fn one_iteration(delay: &Mutex<u8>, sound: &Mutex<u8>) {
         let mut delay = delay.lock().unwrap();
         if *delay > 0 {
             *delay -= 1;
+        }
+
+        let mut sound = sound.lock().unwrap();
+        if *sound > 0 {
+            *sound -= 1;
         }
     }
 
     fn thread_loop(timer: Arc<Timer>) {
         loop {
-            Timer::one_iteration(&timer.delay);
+            Timer::one_iteration(&timer.delay, &timer.sound);
             thread::sleep(Duration::from_micros(16666));
         }
     }
@@ -59,9 +76,9 @@ mod tests {
     fn check_iterations() {
         let timer = Timer::new(true);
         Timer::set_delay(&timer, 0x6);
-        Timer::one_iteration(&timer.delay);
+        Timer::one_iteration(&timer.delay, &timer.sound);
         assert_eq!(Timer::get_delay(&timer), 0x5);
-        Timer::one_iteration(&timer.delay);
+        Timer::one_iteration(&timer.delay, &timer.sound);
         assert_eq!(Timer::get_delay(&timer), 0x4);
     }
 }
