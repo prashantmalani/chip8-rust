@@ -8,7 +8,7 @@ pub const HEIGHT: usize = 32;
 const ON_PIXEL: u8 = 0xFF;
 const OFF_PIXEL: u8 = 0x0;
 
-const THREAD_LOOP_SLEEP_US: u64 = 16666;
+const THREAD_LOOP_SLEEP_US: u64 = 1666;
 
 // We implement the display using a linear vector of 32 bit values.
 pub struct Display {
