@@ -1,4 +1,4 @@
-use std::{env, process::exit};
+use std::{env, process::exit, time::Duration, thread};
 
 mod mem;
 use mem::mem::Memory;
@@ -60,6 +60,7 @@ fn main() {
             },
             _ => {},
         };
+        thread::sleep(Duration::from_micros(1400));
     }
 
     exit(1);
