@@ -90,7 +90,7 @@ impl Display {
     }
 
     fn handle_window_events(disp: &Arc<Display>, window: &mut WindowProxy) {
-        for event in window.event_channel() {
+        if let Ok(event) = window.event_channel() {
             match event.recv_timeout(Duration::from_micros(THREAD_LOOP_SLEEP_US)) {
                 Ok(wevent) => {
                     match wevent {
