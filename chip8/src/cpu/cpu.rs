@@ -456,6 +456,12 @@ impl Cpu {
         self.v[x_ind as usize] = random_num & nn;
     }
 
+    fn branch(&mut self, instr: u16) {
+        let nnn = instr & 0xFFF;
+        let ind = 0;
+        self.pc = nnn + self.v[ind as usize] as u16;
+    }
+
     fn handle_draw(&mut self, instr: u16, mem: Option<&Memory>, disp: &Arc<Display>) {
         let (x, y, sprite) =self.get_sprite(instr, mem.unwrap());
         self.v[0xf] = Display::draw(disp, x, y, &sprite);
@@ -482,6 +488,7 @@ impl Cpu {
                     0x8 => if let Err(e) = self.handle_logic_arith(instr2) {
                         return Err(e);
                     },
+                    0xB => self.branch(instr2),
                     0xC => self.random(instr2),
                     0xD => self.handle_draw(instr2, Some(&*mem.unwrap()), &mut disp.unwrap()),
                     0xE => if let Some(disp) =  disp {
@@ -968,6 +975,21 @@ mod tests {
 
         assert!(cpu.decode(instr, None, None, None).is_ok());
         assert_eq!(cpu.i, (I + VAL as usize) as u16);
+    }
+
+    #[test]
+    fn branch() {
+        let mut cpu = Cpu::new();
+
+        let NNN = 0x456;
+
+        // Try the "default behaviour"
+        let ind = 0;
+        cpu.v[ind as usize] = 0x23;
+        let instr = 0xB << 12 | NNN;
+
+        assert!(cpu.decode(instr, None, None, None).is_ok());
+        assert_eq!(cpu.pc, NNN + 0x23);
     }
 
     #[test]
