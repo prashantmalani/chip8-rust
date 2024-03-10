@@ -63,7 +63,7 @@ fn main() {
 
     let disp = Display::new(false);
 
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new(memory_quirk);
 
     let mut timers = Timer::new(false);
     // main loop

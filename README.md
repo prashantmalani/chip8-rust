@@ -31,7 +31,6 @@ I'll try to keep this list updated as I test more ROMs, but please let me know i
 # Pending tasks
 - Make instruction latency configurable via commandline parameter.
 - Make shift instruction behaviour quirk configurable via commandline parameter.
-- Make load/store instruction I value quirk configurable via command line parameter.
 
 # Credits
 
