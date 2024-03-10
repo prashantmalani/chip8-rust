@@ -15,12 +15,19 @@ use timer::timer::Timer;
 mod audio;
 use audio::audio::Audio;
 
+fn print_help_text() {
+    println!("Usage is \"cargo run <filepath> <options>\"");
+    println!("List of options:");
+    println!("--memory_quirk : Increment register I after load/store operations.");
+}
+
 #[show_image::main]
 fn main() {
     let args: Vec<String> = env::args().collect();
     
-    if args.len() != 2 {
-        println!("Invalid number of params:\n Usage is \"cargo run <filepath>\"");
+    if args.len() < 2 {
+        println!("Invalid number of params.");
+        print_help_text();
         exit(1);
     }
 
@@ -33,7 +40,20 @@ fn main() {
         },
     };
 
-    println!("Read in program of size: {} bytes", program.len()); 
+    let mut memory_quirk = false;
+
+    for arg in &args[2..] {
+        match arg.as_str() {
+            "--memory_quirk" => memory_quirk = true,
+            _ => {
+                    eprintln!("Invalid param: {}", arg);
+                    print_help_text();
+                    exit(1);
+                }
+        }
+    }
+
+    println!("Read in program of size: {} bytes", program.len());
 
     let mut mem = Memory::new();
     match mem.load_program(&program) {
