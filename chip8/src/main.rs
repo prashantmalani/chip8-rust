@@ -19,6 +19,7 @@ fn print_help_text() {
     println!("Usage is \"cargo run <filepath> <options>\"");
     println!("List of options:");
     println!("--memory_quirk : Increment register I after load/store operations.");
+    println!("--vf_reset_quirk : Clear VF after AND/OR/XOR instructions.");
 }
 
 #[show_image::main]
@@ -41,10 +42,12 @@ fn main() {
     };
 
     let mut memory_quirk = false;
+    let mut vf_reset_quirk = false;
 
     for arg in &args[2..] {
         match arg.as_str() {
             "--memory_quirk" => memory_quirk = true,
+            "--vf_reset_quirk" => vf_reset_quirk = true,
             _ => {
                     eprintln!("Invalid param: {}", arg);
                     print_help_text();
@@ -63,7 +66,7 @@ fn main() {
 
     let disp = Display::new(false);
 
-    let mut cpu = Cpu::new(memory_quirk);
+    let mut cpu = Cpu::new(memory_quirk, vf_reset_quirk);
 
     let mut timers = Timer::new(false);
     // main loop

@@ -9,12 +9,13 @@ pub struct Cpu {
     stack: LinkedList<u16>, // Stack
     pressed: HashMap<u8, bool>, // Keep track of pressed keys for "Get Key" instruction.
     mem_quirk: bool, // Whether to apply memory quirk or not.
+    vf_reset_quirk: bool // Whether AND/OR/XOR instructions clear the VF flag.
 }
 
 const PROGRAM_ADDRESS: u16 = 0x200;
 
 impl Cpu {
-    pub fn new(mem_quirk: bool) -> Self {
+    pub fn new(mem_quirk: bool, vf_reset_quirk: bool) -> Self {
         Cpu {
             pc:  PROGRAM_ADDRESS,
             i: 0x0,
@@ -22,6 +23,7 @@ impl Cpu {
             stack: LinkedList::new(),
             pressed: HashMap::new(),
             mem_quirk,
+            vf_reset_quirk,
         }
     }
 
@@ -191,6 +193,10 @@ impl Cpu {
         let vy = self.v[y_ind as usize];
 
         self.v[x_ind as usize] = vx | vy;
+
+        if self.vf_reset_quirk {
+            self.v[0xF] = 0;
+        }
     }
 
     fn logic_vx_and_vy(&mut self, instr: u16) {
@@ -201,6 +207,10 @@ impl Cpu {
         let vy = self.v[y_ind as usize];
 
         self.v[x_ind as usize] = vx & vy;
+
+        if self.vf_reset_quirk {
+            self.v[0xF] = 0;
+        }
     }
 
     fn logic_vx_xor_vy(&mut self, instr: u16) {
@@ -211,6 +221,10 @@ impl Cpu {
         let vy = self.v[y_ind as usize];
 
         self.v[x_ind as usize] = vx ^ vy;
+
+        if self.vf_reset_quirk {
+            self.v[0xF] = 0;
+        }
     }
 
     fn left_shift(&mut self, instr: u16) {
@@ -529,7 +543,7 @@ mod tests {
     #[test]
     // Verify that two consecutive fetches work correctly.
     fn check_fetch() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         let mut mem_array: [u8; 4096] = [0; 4096];
 
         let instr1: u16 = 0x00E0;
@@ -551,7 +565,7 @@ mod tests {
 
     #[test]
     fn fetch_invalid_addr() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         let mem = Memory {
             mem: [0; 4096],
         };
@@ -562,26 +576,26 @@ mod tests {
 
     #[test]
     fn decode_invalid() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         assert!(cpu.decode(0x8008, None, None, None).is_err());
     }
 
     #[test]
     fn decode_disp_clear() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         assert!(cpu.decode(0x00e0, None, None, None).is_ok());
     }
 
     #[test]
     fn decode_set_i() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         assert!(cpu.decode(0xa22a, None, None, None).is_ok());
         assert_eq!(cpu.i, 0x22a);
     }
 
     #[test]
     fn decode_set_v() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         assert!(cpu.decode(0x600c, None, None, None).is_ok());
         assert_eq!(cpu.v[0], 0xc);
         assert!(cpu.decode(0x6FFE, None, None, None).is_ok());
@@ -590,7 +604,7 @@ mod tests {
 
     #[test]
     fn decode_add_v() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         let x = 0x4 as usize;
         let nn = 0x32;
         cpu.v[x] = 0x32;
@@ -608,7 +622,7 @@ mod tests {
 
     #[test]
     fn handle_jump() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         let instr = (0x1 << 12) | 0x123;
 
         assert!(cpu.decode(instr, None, None, None).is_ok());
@@ -617,7 +631,7 @@ mod tests {
 
     #[test]
     fn subroutine() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         const OLD_ADDR: u16 = 0x654;
         const NEW_ADDR: u16 = 0x456;
         let instr = (0x2 << 12) | NEW_ADDR;
@@ -635,7 +649,7 @@ mod tests {
 
     #[test]
     fn return_routine() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         const OLD_ADDR: u16 = 0x654;
         const NEW_ADDR: u16 = 0x456;
         cpu.pc = NEW_ADDR;
@@ -648,7 +662,7 @@ mod tests {
 
     #[test]
     fn decode_skip_vx_eq() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         const X: u8 = 0x2;
         const NN: u8 = 0x45;
         let instr = ((0x3 << 12) | (X as u16 )<< 8 | NN as u16) as u16;
@@ -667,7 +681,7 @@ mod tests {
 
     #[test]
     fn decode_skip_vx_ne() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         const X: u8 = 0x2;
         const NN: u8 = 0x45;
         let instr = ((0x4 << 12) | (X as u16 )<< 8 | NN as u16) as u16;
@@ -686,7 +700,7 @@ mod tests {
 
     #[test]
     fn decode_skip_vx_vy_eq() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         const X: u8 = 0x2;
         const Y: u8 = 0x3;
         const VAL: u8 = 0x45;
@@ -707,7 +721,7 @@ mod tests {
 
     #[test]
     fn decode_skip_vx_vy_not_eq() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         const X: u8 = 0x2;
         const Y: u8 = 0x3;
         const VAL: u8 = 0x45;
@@ -728,7 +742,7 @@ mod tests {
 
     #[test]
     fn set_vx_to_vy() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         const X: u8 = 0x2;
         const Y: u8 = 0x3;
         const VAL1: u8 = 0x50;
@@ -743,7 +757,7 @@ mod tests {
 
     #[test]
     fn decode_arith_vx_minus_vy() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         const X: u8 = 0x2;
         const Y: u8 = 0x3;
         const VAL1: u8 = 0x50;
@@ -766,7 +780,7 @@ mod tests {
 
     #[test]
     fn decode_arith_vx_plus_vy() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         const X: u8 = 0x2;
         const Y: u8 = 0x3;
         const VAL1: u8 = 0x50;
@@ -788,7 +802,7 @@ mod tests {
 
     #[test]
     fn decode_arith_vy_minus_vx() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         const X: u8 = 0x2;
         const Y: u8 = 0x3;
         const VAL1: u8 = 0x50;
@@ -811,7 +825,7 @@ mod tests {
 
     #[test]
     fn decode_logic_vx_or_vy() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         const X: u8 = 0x2;
         const Y: u8 = 0x3;
         const VAL1: u8 = 0xF;
@@ -826,7 +840,7 @@ mod tests {
 
     #[test]
     fn decode_logic_vx_and_vy() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         const X: u8 = 0x2;
         const Y: u8 = 0x3;
         const VAL1: u8 = 0xFF;
@@ -841,7 +855,7 @@ mod tests {
 
     #[test]
     fn decode_logic_vx_xor_vy() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         const X: u8 = 0x2;
         const Y: u8 = 0x3;
         const VAL1: u8 = 0xAA;
@@ -856,7 +870,7 @@ mod tests {
 
     #[test]
     fn decode_left_shift() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         const X: u8 = 0x2;
         const Y: u8 = 0x3;
         const VAL1: u8 = 0xAA;
@@ -876,7 +890,7 @@ mod tests {
 
     #[test]
     fn decode_right_shift() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         const X: u8 = 0x2;
         const Y: u8 = 0x3;
         const VAL1: u8 = 0xAA;
@@ -898,7 +912,7 @@ mod tests {
     // we can get the character value out correctly.
     #[test]
     fn get_font_char() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         const X: usize = 0x4;
         cpu.v[X] = 0xA;
         let instr = 0xF << 12 | (X << 8)  as u16 | 0x29;
@@ -907,7 +921,7 @@ mod tests {
 
     #[test]
     fn store() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         let mut mem = Memory { mem: [0; 4096] };
         const I : usize = 0x600;
         const X: u8 = 0x4;
@@ -933,7 +947,7 @@ mod tests {
 
     #[test]
     fn store_quirk() {
-        let mut cpu = Cpu::new(true);
+        let mut cpu = Cpu::new(true, false);
         let mut mem = Memory { mem: [0; 4096] };
         const I : usize = 0x600;
         const X: u8 = 0x4;
@@ -959,7 +973,7 @@ mod tests {
 
     #[test]
     fn load() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         let mut mem = Memory { mem: [0; 4096] };
         const I : usize = 0x600;
         const X: u8 = 0x4;
@@ -986,7 +1000,7 @@ mod tests {
 
     #[test]
     fn load_quirk() {
-        let mut cpu = Cpu::new(true);
+        let mut cpu = Cpu::new(true, false);
         let mut mem = Memory { mem: [0; 4096] };
         const I : usize = 0x600;
         const X: u8 = 0x4;
@@ -1013,7 +1027,7 @@ mod tests {
 
     #[test]
     fn bcd() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         let mut mem = Memory { mem: [0; 4096]};
         const I: usize = 0x500;
         const X: u8 = 0x4;
@@ -1032,7 +1046,7 @@ mod tests {
 
     #[test]
     fn increment_i() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
 
         const I: usize = 0x500;
         const X: u8 = 0x4;
@@ -1048,7 +1062,7 @@ mod tests {
 
     #[test]
     fn branch() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
 
         let NNN = 0x456;
 
@@ -1063,7 +1077,7 @@ mod tests {
 
     #[test]
     fn check_key_state() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         const X: u8 = 0x4;
         let instr = 0xF << 12 | (X as u16) << 8 | 0x0A;
 
@@ -1089,7 +1103,7 @@ mod tests {
 
     #[test]
     fn get_sprite() {
-        let mut cpu = Cpu::new(false);
+        let mut cpu = Cpu::new(false, false);
         // TODO: Find a way to use MEM_SIZE constant.
         let mut mem_buf = [0; 4096];
 
