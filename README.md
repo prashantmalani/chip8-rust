@@ -34,7 +34,6 @@ I'll try to keep this list updated as I test more ROMs, but please let me know i
 # Pending tasks
 - BNNN instruction support.
 - Make instruction latency configurable via commandline parameter.
-- Make shift instruction behaviour quirk configurable via commandline parameter.
 
 # Credits
 
